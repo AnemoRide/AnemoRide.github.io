@@ -1,0 +1,2312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>相机参数工具箱 · Camera Toolbox</title>
+<meta name="description" content="48 项相机参数计算：画幅视场、景深对焦、曝光、闪光、视频数据、天文航拍、打印色彩。纯离线单页，打开即用。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2317191A'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23F2F3F0' stroke-width='2'/%3E%3Cpath d='M16 7 L19.6 13.5 L16 16 Z' fill='%23A32B22'/%3E%3Cpath d='M23.8 12.5 L19.6 18.5 L16 16 Z' fill='%23F2F3F0'/%3E%3Cpath d='M23.8 19.5 L16.8 19.5 L16 16 Z' fill='%23F2F3F0'/%3E%3Cpath d='M16 25 L12.4 18.5 L16 16 Z' fill='%23F2F3F0'/%3E%3Cpath d='M8.2 19.5 L12.4 13.5 L16 16 Z' fill='%23F2F3F0'/%3E%3Cpath d='M8.2 12.5 L15.2 12.5 L16 16 Z' fill='%23F2F3F0'/%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#F2F3F0;
+  --card:#FFFFFF;
+  --ink:#17191A;
+  --ink-soft:#3A3E40;
+  --muted:#6B7076;
+  --line:#D8DAD5;
+  --line-soft:#E6E7E3;
+  --accent:#A32B22;
+  --accent-ink:#7E211A;
+  --accent-wash:#F5E8E5;
+  --radius:3px;
+  --sidebar:264px;
+  --mono:"SFMono-Regular","Cascadia Mono","JetBrains Mono",Consolas,"Liberation Mono",monospace;
+  --sans:"Helvetica Neue",Helvetica,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(to right,rgba(23,25,26,.045) 1px,transparent 1px);
+  background-size:24px 100%;
+  opacity:.6;
+}
+a{color:inherit}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ===================== 布局：窄屏先写 ===================== */
+.shell{position:relative;z-index:1}
+.scrim{
+  position:fixed;inset:0;background:rgba(23,25,26,.45);
+  opacity:0;visibility:hidden;transition:opacity .18s ease;z-index:40;
+}
+.side{
+  position:fixed;top:0;left:0;bottom:0;width:min(86vw,300px);
+  background:var(--card);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;
+  transform:translateX(-102%);
+  transition:transform .22s cubic-bezier(.22,.61,.36,1);
+  z-index:50;
+}
+.side.open{transform:translateX(0)}
+.topbar{
+  position:sticky;top:0;z-index:30;
+  display:flex;align-items:center;gap:12px;
+  padding:10px 16px;
+  background:rgba(242,243,240,.92);
+  backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--line);
+}
+.iconbtn{
+  width:40px;height:40px;display:grid;place-items:center;
+  border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--card);color:var(--ink);cursor:pointer;padding:0;
+}
+.iconbtn svg{width:18px;height:18px}
+.topbar .tbrand{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.topbar .tbrand b{font-size:14px;letter-spacing:.02em}
+.topbar .tbrand span{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.08em}
+main{padding:20px 16px 72px;max-width:1120px;margin:0 auto}
+
+/* ===================== 侧边栏 ===================== */
+.brand{
+  padding:20px 18px 16px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:10px;
+}
+.brand svg{width:34px;height:34px;flex:none}
+.brand .txt{min-width:0}
+.brand b{display:block;font-size:15px;letter-spacing:.01em;white-space:nowrap}
+.brand small{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--muted);margin-top:2px}
+.side-search{padding:14px 14px 10px}
+.searchwrap{position:relative}
+.searchwrap svg{
+  position:absolute;left:9px;top:50%;transform:translateY(-50%);
+  width:14px;height:14px;color:var(--muted);pointer-events:none;
+}
+.side-search input{
+  width:100%;height:36px;padding:0 10px 0 30px;font-size:14px;
+  border:1px solid var(--line);border-radius:var(--radius);
+  background:#FBFBF9;color:var(--ink);font-family:var(--sans);
+}
+.side-search input::placeholder{color:#9A9E9C}
+.side-search input:focus{outline:none;border-color:var(--ink);background:#fff}
+.nav{overflow-y:auto;flex:1;padding:4px 8px 20px;overscroll-behavior:contain}
+.group{margin-top:14px}
+.group h6{
+  margin:0 0 4px;padding:0 8px;
+  font-family:var(--mono);font-size:10.5px;font-weight:500;
+  letter-spacing:.12em;color:var(--muted);
+}
+.group h6 .dot{color:var(--accent);margin-right:6px}
+.navlink{
+  display:flex;align-items:baseline;gap:8px;
+  padding:7px 8px;border-radius:var(--radius);
+  text-decoration:none;color:var(--ink-soft);
+  font-size:13.5px;line-height:1.35;border-left:2px solid transparent;
+}
+.navlink .code{
+  font-family:var(--mono);font-size:10.5px;color:var(--muted);flex:none;width:16px;
+}
+.navlink span{min-width:0}
+.navlink:hover{background:#F7F7F4;color:var(--ink)}
+.navlink.active{
+  background:var(--accent-wash);color:var(--accent-ink);
+  border-left-color:var(--accent);font-weight:600;
+}
+.navlink.active .code{color:var(--accent)}
+.side-foot{
+  border-top:1px solid var(--line);padding:12px 18px;
+  font-family:var(--mono);font-size:10.5px;color:var(--muted);
+  letter-spacing:.06em;display:flex;justify-content:space-between;gap:8px;
+}
+#emptyhint{
+  display:none;padding:18px 10px;font-size:12.5px;color:var(--muted);
+}
+#emptyhint.on{display:block}
+
+/* ===================== 首页 ===================== */
+.hero{padding:8px 0 22px;border-bottom:1px solid var(--line)}
+.hero .kicker{
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--accent);
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;
+}
+.hero .kicker::after{content:"";height:1px;flex:1;background:var(--line)}
+.hero h1{
+  margin:0 0 10px;font-size:clamp(26px,5.2vw,40px);line-height:1.12;
+  letter-spacing:-.01em;font-weight:600;
+}
+.hero p{margin:0;color:var(--muted);font-size:14.5px;max-width:62ch}
+.hero .stats{
+  display:flex;flex-wrap:wrap;gap:22px;margin-top:18px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);
+}
+.hero .stats b{display:block;font-size:20px;letter-spacing:0;color:var(--ink);font-weight:600}
+.hero-inner{display:grid;gap:22px}
+.ref{
+  border:1px solid var(--line);background:var(--card);border-radius:var(--radius);
+  padding:12px 13px 6px;
+}
+.ref h5{
+  margin:0 0 9px;display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.12em;color:var(--muted);
+}
+.ref h5 em{font-style:normal;color:var(--accent);letter-spacing:.06em}
+.ref table{width:100%;border-collapse:collapse;table-layout:fixed}
+.ref th{
+  text-align:left;font-family:var(--mono);font-size:10px;font-weight:500;
+  letter-spacing:.06em;color:var(--muted);padding:0 0 5px;
+}
+.ref td{
+  font-size:12px;color:var(--ink-soft);padding:6px 0;
+  border-top:1px dashed var(--line-soft);vertical-align:baseline;
+}
+.ref td.d{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.ref td.c{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;white-space:nowrap}
+.ref .foot{
+  margin-top:8px;padding-top:8px;border-top:1px solid var(--line);
+  font-size:11.5px;color:var(--muted);line-height:1.5;
+}
+.groups{margin-top:26px}
+.gcard{
+  border:1px solid var(--line);background:var(--card);
+  border-radius:var(--radius);padding:16px 16px 12px;margin-bottom:12px;
+}
+.gcard .ghead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
+.gcard .ghead h3{margin:0;font-size:16px;font-weight:600;letter-spacing:.01em}
+.gcard .ghead em{
+  font-family:var(--mono);font-style:normal;font-size:10.5px;color:var(--muted);letter-spacing:.1em;
+}
+.gcard .gl{display:flex;flex-direction:column;gap:0}
+.gcard .gl a{
+  display:flex;gap:10px;align-items:baseline;text-decoration:none;
+  padding:5px 0;border-top:1px dashed var(--line-soft);font-size:13.5px;color:var(--ink-soft);
+}
+.gcard .gl a:first-child{border-top:0}
+.gcard .gl a:hover{color:var(--accent-ink)}
+.gcard .gl a i{font-family:var(--mono);font-style:normal;font-size:10.5px;color:var(--muted);width:16px;flex:none}
+
+/* ===================== 计算器页 ===================== */
+.crumb{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);
+  padding-bottom:14px;
+}
+.crumb a{text-decoration:none;color:var(--muted)}
+.crumb a:hover{color:var(--accent)}
+.crumb .sep{color:var(--line)}
+.crumb .cur{color:var(--ink)}
+.chead{display:flex;align-items:flex-start;gap:16px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.chead .num{
+  font-family:var(--mono);font-size:clamp(30px,6vw,44px);line-height:1;font-weight:500;
+  color:var(--accent);letter-spacing:-.02em;flex:none;padding-top:2px;
+}
+.chead .meta{min-width:0}
+.chead h2{margin:0 0 6px;font-size:clamp(20px,3.6vw,27px);line-height:1.2;font-weight:600;letter-spacing:-.005em}
+.chead p{margin:0;color:var(--muted);font-size:13.5px;max-width:58ch}
+.chead .tagrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tag{
+  font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+  border:1px solid var(--line);border-radius:2px;padding:2px 6px;color:var(--muted);
+}
+
+.panel{
+  border:1px solid var(--line);background:var(--card);border-radius:var(--radius);
+  margin-top:20px;
+}
+.panel .phead{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px 14px;border-bottom:1px solid var(--line);
+}
+.panel .phead h4{margin:0;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--ink-soft)}
+.panel .phead .tools{display:flex;gap:6px}
+.minibtn{
+  border:1px solid var(--line);background:#FBFBF9;color:var(--ink-soft);
+  font-size:11.5px;padding:4px 9px;border-radius:2px;cursor:pointer;
+  min-height:26px;
+}
+.minibtn:hover{border-color:var(--ink);color:var(--ink)}
+.minibtn:active{background:#F0F0EC}
+.pbody{padding:14px}
+.fields{display:grid;grid-template-columns:1fr;gap:12px 18px}
+.f label{
+  display:block;font-size:12px;color:var(--muted);letter-spacing:.02em;margin-bottom:5px;
+}
+.f .inwrap{position:relative;display:flex;align-items:center}
+.f input[type=number],.f select,.f input[type=text]{
+  width:100%;height:40px;font-size:16px;
+  padding:0 10px;border:1px solid var(--line);border-radius:2px;
+  background:#FBFBF9;color:var(--ink);font-family:var(--mono);
+  -moz-appearance:textfield;
+}
+.f input[type=number]::-webkit-outer-spin-button,
+.f input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.f select{font-family:var(--sans);font-size:14.5px;appearance:none;padding-right:28px}
+.f .inwrap .chev{position:absolute;right:10px;pointer-events:none;width:12px;height:12px;color:var(--muted)}
+.f input:focus,.f select:focus{outline:none;border-color:var(--ink);background:#fff}
+.f .unit{
+  position:absolute;right:10px;font-family:var(--mono);font-size:11px;color:var(--muted);
+  pointer-events:none;letter-spacing:.02em;
+}
+.f .hint{display:block;font-size:11px;color:#9A9E9C;margin-top:4px;font-family:var(--mono)}
+.f.hide{display:none}
+
+/* 结果 */
+.res{
+  margin-top:20px;border-top:1px solid var(--ink);padding-top:14px;
+}
+.res .rlabel{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--muted);
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;
+}
+.res .rlabel::after{content:"";flex:1;height:1px;background:var(--line-soft)}
+.outgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.out .k{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px;letter-spacing:.02em}
+.out .v{
+  display:block;font-family:var(--mono);font-size:17px;line-height:1.35;
+  color:var(--ink);letter-spacing:-.01em;word-break:break-word;
+}
+.out.wide{grid-column:1 / -1}
+.out .v.big{font-size:22px}
+.out .v.accent{color:var(--accent-ink)}
+.tbl{margin-top:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;table-layout:fixed}
+th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+th:first-child,td:first-child{text-align:left}
+th{
+  font-family:var(--sans);font-weight:600;font-size:11px;color:var(--muted);
+  border-bottom:1px solid var(--line);letter-spacing:.02em;
+}
+.note{
+  margin-top:16px;padding:10px 12px;background:#FAFAF6;border:1px solid var(--line-soft);
+  border-left:2px solid var(--accent);font-size:12.5px;color:var(--ink-soft);line-height:1.65;
+}
+.note b{color:var(--accent-ink);font-weight:600}
+.err{
+  margin-top:16px;padding:10px 12px;background:#F7E7E4;border:1px solid #E4C3BD;
+  font-size:12.5px;color:#7E211A;
+}
+.pager{
+  display:flex;justify-content:space-between;gap:10px;margin-top:28px;
+  border-top:1px solid var(--line);padding-top:14px;
+}
+.pager a{
+  text-decoration:none;font-size:12.5px;color:var(--ink-soft);
+  display:flex;flex-direction:column;gap:2px;max-width:48%;
+}
+.pager a b{font-weight:600;font-size:13px}
+.pager a span{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em}
+.pager a:hover b{color:var(--accent)}
+.pager .next{text-align:right;margin-left:auto}
+
+/* 回到顶部 / toast */
+.ft{
+  margin-top:34px;padding-top:14px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.06em;
+  display:flex;gap:14px;flex-wrap:wrap;justify-content:space-between;
+}
+#toast{
+  position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);
+  background:var(--ink);color:#F2F3F0;padding:9px 14px;border-radius:2px;
+  font-size:12.5px;opacity:0;pointer-events:none;transition:.18s ease;z-index:60;
+  letter-spacing:.02em;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ===================== 桌面端 ===================== */
+@media (min-width:900px){
+  body::before{background-size:32px 100%}
+  .topbar{display:none}
+  .scrim{display:none}
+  .side{
+    width:var(--sidebar);transform:none;
+    box-shadow:none;
+  }
+  main{
+    margin-left:var(--sidebar);
+    max-width:none;padding:28px 40px 80px;
+  }
+  .container{max-width:1020px;margin:0 auto}
+  .fields{grid-template-columns:1fr 1fr}
+  .fields.three{grid-template-columns:1fr 1fr 1fr}
+  .outgrid{grid-template-columns:repeat(4,1fr)}
+  .groups{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .gcard{margin:0}
+  .gcard.span2{grid-column:1/-1}
+  .gcard.span2 .gl{display:grid;grid-template-columns:1fr 1fr;column-gap:30px}
+  .gcard.span2 .gl a{border-top:0;padding:6px 0}
+  .hero{padding-bottom:26px}
+  .hero-inner{grid-template-columns:minmax(0,1fr) 304px;gap:32px;align-items:start}
+  .chead{gap:22px}
+}
+@media (min-width:1280px){
+  main{padding-left:56px;padding-right:56px}
+  .container{max-width:1100px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="scrim" id="scrim"></div>
+<div class="shell">
+  <header class="topbar">
+    <button class="iconbtn" id="menuBtn" aria-label="打开目录" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <div class="tbrand">
+      <b>相机参数工具箱</b>
+      <span>48 CALC · OFFLINE</span>
+    </div>
+  </header>
+
+  <aside class="side" id="side" aria-label="功能目录">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" fill="#17191A"/>
+        <circle cx="16" cy="16" r="9.2" fill="none" stroke="#F2F3F0" stroke-width="1.6"/>
+        <path d="M16 7 L19.6 13.5 L16 16 Z" fill="#A32B22"/>
+        <path d="M23.8 12.5 L19.6 18.5 L16 16 Z" fill="#F2F3F0"/>
+        <path d="M23.8 19.5 L16.8 19.5 L16 16 Z" fill="#F2F3F0"/>
+        <path d="M16 25 L12.4 18.5 L16 16 Z" fill="#F2F3F0"/>
+        <path d="M8.2 19.5 L12.4 13.5 L16 16 Z" fill="#F2F3F0"/>
+        <path d="M8.2 12.5 L15.2 12.5 L16 16 Z" fill="#F2F3F0"/>
+      </svg>
+      <div class="txt">
+        <b>相机参数工具箱</b>
+        <small>CAMERA TOOLBOX</small>
+      </div>
+    </div>
+    <div class="side-search">
+      <div class="searchwrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input id="q" type="search" placeholder="搜索功能，如 景深、ND、GSD" autocomplete="off">
+      </div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div id="emptyhint">没有匹配的功能。试试「焦距」「曝光」「星轨」。</div>
+    <div class="side-foot"><span>48 CALC</span><span>v3.0</span></div>
+  </aside>
+
+  <main>
+    <div class="container" id="view"></div>
+  </main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   基础数据：传感器规格（与 Python 版一致，共 14 档）
+   ============================================================ */
+var SENSORS = [
+  { n: '1/3.2" 手机', w: 4.54, h: 3.42, u: '前置 / 入门手机' },
+  { n: '1/2.3"', w: 6.17, h: 4.55, u: '卡片机 / 无人机' },
+  { n: '1/1.7"', w: 7.60, h: 5.70, u: '高端卡片机' },
+  { n: '1/1.3"', w: 9.60, h: 7.20, u: '大底手机' },
+  { n: '1"', w: 13.20, h: 8.80, u: 'RX100 / Mavic 3' },
+  { n: 'M4/3', w: 17.30, h: 13.00, u: 'M4/3 系统' },
+  { n: 'APS-C 佳能', w: 22.30, h: 14.90, u: '1.6 倍裁切' },
+  { n: 'APS-C 索/尼/富', w: 23.50, h: 15.60, u: '1.5 倍裁切' },
+  { n: 'APS-H', w: 27.90, h: 18.60, u: '1.3 倍裁切' },
+  { n: '全画幅 36×24', w: 36.00, h: 24.00, u: '1.0 倍基准' },
+  { n: '4433 中画幅', w: 44.00, h: 33.00, u: 'GFX / X1D' },
+  { n: '645 中画幅', w: 53.00, h: 40.00, u: 'X2D / IQ4' },
+  { n: '6×6 中画幅', w: 56.00, h: 56.00, u: '老式中画幅' },
+  { n: '4×5 大画幅', w: 127.00, h: 101.60, u: '4×5 英寸' }
+];
+var DEFAULT_SENSOR = 9;
+var FF_DIAG = Math.hypot(36, 24);
+var CUSTOM = SENSORS.length;
+
+var CATS = [
+  { key: 'format', code: '10', title: '画幅 / 视场 / 采样', note: '焦距、画幅、像素密度、衍射' },
+  { key: 'focus', code: '20', title: '景深 / 对焦', note: '景深、超焦距、微距、堆栈' },
+  { key: 'expo', code: '30', title: '曝光', note: 'EV、ND、互易律、运动模糊' },
+  { key: 'flash', code: '40', title: '闪光 / 照明', note: 'GN、功率档、柔光、凝固' },
+  { key: 'video', code: '50', title: '视频 / 数据', note: '快门角度、码率、升格、续航' },
+  { key: 'astro', code: '60', title: '天文 / 航拍', note: '星野、深空、月面、GSD' },
+  { key: 'print', code: '70', title: '打印 / 色彩 / 画质', note: 'dpi、弥散圆、全景、色温' }
+];
+
+/* ============================================================
+   数学工具
+   ============================================================ */
+var DEG = Math.PI / 180;
+function rad(d) { return d * DEG; }
+function fovAngles(w, h, f) {
+  var dg = Math.hypot(w, h);
+  return {
+    fh: 2 * Math.atan(w / (2 * f)) / DEG,
+    fv: 2 * Math.atan(h / (2 * f)) / DEG,
+    fd: 2 * Math.atan(dg / (2 * f)) / DEG,
+    diag: dg
+  };
+}
+function cropOf(w, h) { return FF_DIAG / Math.hypot(w, h); }
+function cocOf(w, h) { return Math.hypot(w, h) / 1500; }
+function hyperMM(f, N, c) { return f * f / (N * c) + f; }
+function dofRange(f, N, s, c) {
+  var H = hyperMM(f, N, c);
+  var near = s * (H - f) / (H + s - 2 * f);
+  var far = s < H ? s * (H - f) / (H - s) : Infinity;
+  return { near: near, far: far, H: H };
+}
+function pitchUM(w, pxw) { return w * 1000 / pxw; }
+function airyUM(N, lam) { return 2.44 * (lam || 0.55) * N; }
+function ev100(N, t, iso) { return Math.log2(N * N / t) - Math.log2(iso / 100); }
+function pixelAngleDeg(pitch, f) { return Math.atan((pitch / 1000) / f) / DEG; }
+function mired(k) { return 1e6 / k; }
+function colorTemp(m) { return 1e6 / m; }
+function num(x, nd) {
+  if (!isFinite(x)) return x > 0 ? '∞' : '—';
+  var v = String(Number(Number(x).toFixed(nd === undefined ? 2 : nd)));
+  var p = v.split('.');
+  p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return p.join('.');
+}
+function fmtShutter(t) {
+  if (!isFinite(t)) return '∞';
+  if (t >= 60) return num(t / 60, 1) + ' min';
+  if (t >= 1) return num(t, 1) + ' s';
+  var d = 1 / t;
+  if (d < 2) return num(t * 1000, 0) + ' ms';
+  if (d < 1000) return '1/' + num(d, 0);
+  return num(t * 1000, 2) + ' ms';
+}
+function parseShutter(str, fallback) {
+  var t = String(str == null ? '' : str).trim().toLowerCase()
+    .replace(/\s/g, '').replace(/秒/g, '').replace(/／/g, '/');
+  var v;
+  if (t.slice(-2) === 'ms') { v = parseFloat(t.slice(0, -2)) / 1000; }
+  else if (t.slice(-1) === 's') { v = parseFloat(t.slice(0, -1)); }
+  else if (t.indexOf('/') > -1) {
+    var p = t.split('/');
+    v = parseFloat(p[0]) / parseFloat(p[1]);
+  } else { v = parseFloat(t); }
+  return isFinite(v) && v > 0 ? v : fallback;
+}
+function nz(v, d) { return typeof v === 'number' && isFinite(v) ? v : d; }
+
+/* ============================================================
+   状态与工具
+   ============================================================ */
+var STORE = {};
+var CALC_MAP = {};
+
+function sen(v) {
+  if (v.sensor === CUSTOM) {
+    var w = nz(v.cw, 36), h = nz(v.ch, 24);
+    return { w: w, h: h, n: '自定义' + num(w, 2).replace('.00', '') + '×' + num(h, 2).replace('.00', '') };
+  }
+  var s = SENSORS[v.sensor];
+  return s || SENSORS[DEFAULT_SENSOR];
+}
+function lens(v) {
+  var s = sen(v);
+  var f = nz(v.f, 50);
+  var dg = Math.hypot(s.w, s.h);
+  var crop = FF_DIAG / dg;
+  return { w: s.w, h: s.h, name: s.n, f: f, diag: dg, crop: crop, eqf: f * crop };
+}
+function defaultsOf(calc) {
+  var o = {};
+  calc.fields.forEach(function (f) {
+    o[f.k] = f.kind === 'sensor' ? DEFAULT_SENSOR : (f.def !== undefined ? f.def : '');
+  });
+  if (calc.fields.some(function (f) { return f.kind === 'sensor'; })) {
+    o.cw = 36; o.ch = 24;
+  }
+  return o;
+}
+function stateOf(calc) {
+  if (!STORE[calc.id]) STORE[calc.id] = defaultsOf(calc);
+  return STORE[calc.id];
+}
+function toast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(el._t);
+  el._t = setTimeout(function () { el.classList.remove('on'); }, 1800);
+}
+
+/* ============================================================
+   导航
+   ============================================================ */
+var navEl = document.getElementById('nav');
+var emptyEl = document.getElementById('emptyhint');
+
+function buildNav() {
+  var html = '';
+  CATS.forEach(function (cat) {
+    var items = CALCS.filter(function (c) { return c.cat === cat.key; });
+    html += '<div class="group" data-cat="' + cat.key + '">';
+    html += '<h6><span class="dot">/</span>' + cat.code + ' ' + cat.title + '</h6>';
+    items.forEach(function (c) {
+      html += '<a class="navlink" href="#/c/' + c.id + '" data-id="' + c.id + '" data-text="' +
+        (c.id + ' ' + c.name + ' ' + (c.brief || '') + ' ' + cat.title).toLowerCase() + '">' +
+        '<span class="code">' + c.id + '</span><span>' + c.name + '</span></a>';
+    });
+    html += '</div>';
+  });
+  navEl.innerHTML = html;
+}
+
+function filterNav(q) {
+  q = (q || '').trim().toLowerCase();
+  var shown = 0;
+  navEl.querySelectorAll('.group').forEach(function (g) {
+    var catShown = 0;
+    g.querySelectorAll('.navlink').forEach(function (a) {
+      var hit = !q || a.dataset.text.indexOf(q) > -1;
+      a.style.display = hit ? '' : 'none';
+      if (hit) catShown++;
+    });
+    g.style.display = catShown ? '' : 'none';
+    shown += catShown;
+  });
+  emptyEl.classList.toggle('on', shown === 0);
+}
+function markActive(id) {
+  navEl.querySelectorAll('.navlink').forEach(function (a) {
+    a.classList.toggle('active', a.dataset.id === String(id));
+  });
+}
+
+/* ============================================================
+   渲染：首页
+   ============================================================ */
+function viewHome() {
+  var html = '';
+  var refList = [
+    [43.8, '中画幅'], [36, '全画幅'], [23.5, 'APS-C'],
+    [17.3, 'M4/3'], [13.2, '1 英寸'], [6.2, '1/2.3 英寸']
+  ];
+  var refRows = '';
+  refList.forEach(function (r) {
+    var s = SENSORS.filter(function (x) { return Math.abs(x.w - r[0]) < 0.5; })[0];
+    if (!s) return;
+    refRows += '<tr><td>' + r[1] + '</td><td class="d">' +
+      num(s.w, 1).replace('.0', '') + '×' + num(s.h, 1).replace('.0', '') + '</td><td class="c">' +
+      num(cropOf(s.w, s.h), 2) + '×</td></tr>';
+  });
+
+  html += '<section class="hero"><div class="hero-inner"><div class="hero-main">';
+  html += '<div class="kicker">CAMERA TOOLBOX / 48 CALC</div>';
+  html += '<h1>把相机的每个参数<br>算清楚再按下快门</h1>';
+  html += '<p>从画幅视角、景深超焦距，到闪光 GN、星野拖线、航测 GSD 与打印 dpi。' +
+    '选左边的功能，改数字，结果即时更新；全部在本机算完，不联网也能用。</p>';
+  html += '<div class="stats">';
+  html += '<div><b>48</b>项计算</div>';
+  html += '<div><b>' + CATS.length + '</b>大类</div>';
+  html += '<div><b>' + SENSORS.length + '</b>档传感器预设</div>';
+  html += '</div>';
+  html += '</div>';
+  html += '<aside class="ref"><h5><span>画幅速查</span><em>36×24 = 1.00</em></h5>';
+  html += '<table><colgroup><col style="width:46%"><col style="width:34%"><col style="width:20%"></colgroup>' +
+    '<thead><tr><th>画幅</th><th>尺寸 mm</th><th style="text-align:right">裁切</th></tr></thead>' +
+    '<tbody>' + refRows + '</tbody></table>';
+  html += '<div class="foot">裁切系数 = 全画幅对角线 ÷ 本画幅对角线。它决定同一支镜头的等效焦距与等效光圈。</div>';
+  html += '</aside></div></section>';
+
+  html += '<div class="groups">';
+  CATS.forEach(function (cat, ci) {
+    var items = CALCS.filter(function (c) { return c.cat === cat.key; });
+    var span = (CATS.length % 2 === 1 && ci === CATS.length - 1) ? ' span2' : '';
+    html += '<article class="gcard' + span + '"><div class="ghead"><h3>' + cat.title + '</h3><em>' +
+      cat.code + ' / ' + items.length + ' 项</em></div><div class="gl">';
+    items.forEach(function (c) {
+      html += '<a href="#/c/' + c.id + '"><i>' + c.id + '</i><span>' + c.name + '</span></a>';
+    });
+    html += '</div></article>';
+  });
+  html += '</div>';
+  html += '<div class="ft"><span>浅色界面 · 键盘可导航 · 手机可用</span><span>v3.0 · 全离线</span></div>';
+  return html;
+}
+
+/* ============================================================
+   渲染：计算器
+   ============================================================ */
+function fieldHTML(f, v) {
+  var hidden = f.when && !f.when(v);
+  var cls = 'f' + (hidden ? ' hide' : '');
+  var h = '<div class="' + cls + '" data-k="' + f.k + '">';
+  h += '<label for="in_' + f.k + '">' + f.label + '</label><div class="inwrap">';
+
+  if (f.kind === 'sensor') {
+    h += '<select id="in_' + f.k + '" data-kind="sensor">';
+    SENSORS.forEach(function (s, i) {
+      h += '<option value="' + i + '"' + (v[f.k] === i ? ' selected' : '') + '>' +
+        s.n + '　' + num(s.w, 2).replace('.00', '') + '×' + num(s.h, 2).replace('.00', '') + ' mm</option>';
+    });
+    h += '<option value="' + CUSTOM + '"' + (v[f.k] === CUSTOM ? ' selected' : '') + '>自定义尺寸</option>';
+    h += '</select><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+  } else if (f.kind === 'sel') {
+    h += '<select id="in_' + f.k + '">';
+    f.opts.forEach(function (o) {
+      var val = Array.isArray(o) ? o[0] : o;
+      var lab = Array.isArray(o) ? o[1] : o;
+      h += '<option value="' + val + '"' + (v[f.k] === val ? ' selected' : '') + '>' + lab + '</option>';
+    });
+    h += '</select><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+  } else if (f.kind === 'shutter') {
+    h += '<input id="in_' + f.k + '" type="text" inputmode="decimal" value="' +
+      (v[f.k] === undefined ? '' : fmtShutterInput(v[f.k])) + '" autocomplete="off">';
+  } else {
+    h += '<input id="in_' + f.k + '" type="number" step="' + (f.step || 'any') + '"' +
+      (f.min !== undefined ? ' min="' + f.min + '"' : '') +
+      (f.max !== undefined ? ' max="' + f.max + '"' : '') +
+      ' value="' + (v[f.k] === undefined ? '' : v[f.k]) + '" autocomplete="off">';
+    if (f.unit) h += '<span class="unit">' + f.unit + '</span>';
+  }
+  h += '</div>';
+  if (f.hint) h += '<span class="hint">' + f.hint + '</span>';
+  h += '</div>';
+  return h;
+}
+function fmtShutterInput(t) {
+  if (!isFinite(t)) return '';
+  if (t >= 1) return String(Number(t.toFixed(3)));
+  return '1/' + Math.round(1 / t);
+}
+
+function resHTML(calc, v) {
+  var r;
+  try {
+    r = calc.calc(v);
+  } catch (e) {
+    return '<div class="err">参数组合无法计算：' + (e && e.message ? e.message : '请检查输入') + '</div>';
+  }
+  if (!r) return '';
+  var h = '<div class="res"><div class="rlabel">RESULT / 计算结果</div><div class="outgrid">';
+  (r.out || []).forEach(function (o) {
+    h += '<div class="out' + (o.wide ? ' wide' : '') + '"><span class="k">' + o.k + '</span>' +
+      '<span class="v' + (o.big ? ' big' : '') + (o.accent ? ' accent' : '') + '">' + o.v + '</span></div>';
+  });
+  h += '</div>';
+  if (r.table) {
+    var n = r.table.cols.length;
+    h += '<div class="tbl"><table><colgroup>';
+    h += '<col style="width:' + (n > 3 ? 26 : 34) + '%">';
+    for (var i = 1; i < n; i++) h += '<col style="width:' + ((n > 3 ? 74 : 66) / (n - 1)) + '%">';
+    h += '</colgroup><thead><tr>';
+    r.table.cols.forEach(function (c) { h += '<th>' + c + '</th>'; });
+    h += '</tr></thead><tbody>';
+    r.table.rows.forEach(function (row) {
+      h += '<tr>';
+      row.forEach(function (c) { h += '<td>' + c + '</td>'; });
+      h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+  if (r.note) h += '<div class="note">' + r.note + '</div>';
+  h += '</div>';
+  return h;
+}
+
+function viewCalc(calc) {
+  var v = stateOf(calc);
+  var idx = CALCS.indexOf(calc);
+  var prev = CALCS[idx - 1], next = CALCS[idx + 1];
+  var cat = CATS.filter(function (c) { return c.key === calc.cat; })[0] || { title: '', code: '' };
+
+  var h = '';
+  h += '<div class="crumb"><a href="#/">全部功能</a><span class="sep">/</span>' +
+    '<span>' + cat.code + ' ' + cat.title + '</span><span class="sep">/</span>' +
+    '<span class="cur">' + calc.name + '</span></div>';
+
+  h += '<header class="chead"><div class="num">' + calc.id + '</div><div class="meta">' +
+    '<h2>' + calc.name + '</h2><p>' + (calc.brief || '') + '</p>' +
+    '<div class="tagrow"><span class="tag">' + cat.title + '</span>' +
+    (calc.tags || []).map(function (t) { return '<span class="tag">' + t + '</span>'; }).join('') +
+    '</div></div></header>';
+
+  h += '<section class="panel"><div class="phead"><h4>输入参数</h4><div class="tools">' +
+    '<button class="minibtn" id="resetBtn">恢复默认</button></div></div>' +
+    '<div class="pbody"><div class="fields' + (calc.fields.length > 4 ? ' three' : '') + '" id="fields">';
+  calc.fields.forEach(function (f) { h += fieldHTML(f, v); });
+  h += '</div></div></section>';
+
+  h += '<div id="resWrap">' + resHTML(calc, v) + '</div>';
+
+  h += '<div class="pager">';
+  h += prev ? '<a href="#/c/' + prev.id + '"><span>PREV / ' + prev.id + '</span><b>' + prev.name + '</b></a>' : '<span></span>';
+  h += next ? '<a class="next" href="#/c/' + next.id + '"><span>NEXT / ' + next.id + '</span><b>' + next.name + '</b></a>' : '';
+  h += '</div>';
+  h += '<div class="ft"><span>结果随输入即时更新</span><span>' + calc.id + ' / 48</span></div>';
+  return h;
+}
+
+function bindCalc(calc) {
+  var v = stateOf(calc);
+  var wrap = document.getElementById('resWrap');
+
+  function refresh() {
+    var r;
+    wrap.innerHTML = resHTML(calc, v);
+  }
+
+  document.querySelectorAll('#fields [data-k]').forEach(function (box) {
+    var k = box.dataset.k;
+    var el = box.querySelector('input,select');
+    if (!el) return;
+    var field = calc.fields.filter(function (f) { return f.k === k; })[0];
+    var evt = el.tagName === 'SELECT' ? 'change' : 'input';
+
+    el.addEventListener(evt, function () {
+      if (field.kind === 'sensor') {
+        v[k] = el.value === String(CUSTOM) ? CUSTOM : Number(el.value);
+        document.getElementById('fields').innerHTML = calc.fields.map(function (f) {
+          return fieldHTML(f, v);
+        }).join('');
+        bindCalc(calc);
+        return;
+      }
+      if (field.kind === 'sel') {
+        v[k] = el.value;
+      } else if (field.kind === 'shutter') {
+        v[k] = parseShutter(el.value, v[k] || field.def);
+      } else {
+        var x = parseFloat(el.value);
+        v[k] = isFinite(x) ? x : (field.def === undefined ? '' : field.def);
+      }
+      refresh();
+    });
+    if (field.kind === 'shutter') {
+      el.addEventListener('blur', function () {
+        el.value = fmtShutterInput(v[k]);
+        refresh();
+      });
+    }
+  });
+
+  var reset = document.getElementById('resetBtn');
+  if (reset) reset.addEventListener('click', function () {
+    STORE[calc.id] = defaultsOf(calc);
+    render();
+    toast('已恢复默认值');
+  });
+}
+
+/* ============================================================
+   路由
+   ============================================================ */
+function render() {
+  var view = document.getElementById('view');
+  var hash = location.hash || '#/';
+  var m = hash.match(/^#\/c\/(\d+)/);
+
+  if (!m) {
+    view.innerHTML = viewHome();
+    markActive(null);
+    document.title = '相机参数工具箱 · 48 项计算';
+    window.scrollTo({ top: 0 });
+    return;
+  }
+  var calc = CALC_MAP[m[1]];
+  if (!calc) { location.hash = '#/'; return; }
+  view.innerHTML = viewCalc(calc);
+  bindCalc(calc);
+  markActive(calc.id);
+  document.title = calc.name + ' · 相机参数工具箱';
+  window.scrollTo({ top: 0 });
+  closeDrawer();
+}
+
+/* ============================================================
+   抽屉 / 搜索 / 启动
+   ============================================================ */
+function openDrawer() {
+  document.getElementById('side').classList.add('open');
+  document.getElementById('scrim').style.visibility = 'visible';
+  document.getElementById('scrim').style.opacity = '1';
+  document.getElementById('menuBtn').setAttribute('aria-expanded', 'true');
+}
+function closeDrawer() {
+  if (window.innerWidth >= 900) return;
+  document.getElementById('side').classList.remove('open');
+  var sc = document.getElementById('scrim');
+  sc.style.opacity = '0';
+  sc.style.visibility = 'hidden';
+  document.getElementById('menuBtn').setAttribute('aria-expanded', 'false');
+}
+
+function boot() {
+  buildNav();
+  CALCS.forEach(function (c) { CALC_MAP[c.id] = c; });
+  document.getElementById('menuBtn').addEventListener('click', function () {
+    var side = document.getElementById('side');
+    if (side.classList.contains('open')) { closeDrawer(); } else { openDrawer(); }
+  });
+  document.getElementById('scrim').addEventListener('click', closeDrawer);
+  document.getElementById('q').addEventListener('input', function (e) {
+    filterNav(e.target.value);
+  });
+  navEl.addEventListener('click', function (e) {
+    var a = e.target.closest('.navlink');
+    if (a) { closeDrawer(); }
+  });
+  window.addEventListener('hashchange', render);
+  window.addEventListener('resize', function () {
+    if (window.innerWidth >= 900) {
+      document.getElementById('side').classList.remove('open');
+      var sc = document.getElementById('scrim');
+      sc.style.opacity = '0'; sc.style.visibility = 'hidden';
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeDrawer(); }
+    if (e.key === '/' && document.activeElement !== document.getElementById('q')) {
+      e.preventDefault();
+      document.getElementById('q').focus();
+    }
+  });
+  render();
+}
+/* ============================================================
+   计算项定义
+   ============================================================ */
+var CALCS = [];
+
+function fN(k, label, def, unit, hint, min, max) {
+  return { k: k, label: label, kind: 'num', def: def, unit: unit || '', hint: hint || '', min: min, max: max };
+}
+function fS(k, label, opts, def) { return { k: k, label: label, kind: 'sel', opts: opts, def: def }; }
+function fSen(label) { return { k: 'sensor', label: label || '传感器', kind: 'sensor' }; }
+function fSh(k, label, def, hint) { return { k: k, label: label, kind: 'shutter', def: def, hint: hint || '' }; }
+function O(k, v, extra) {
+  var o = { k: k, v: v };
+  if (extra) for (var x in extra) o[x] = extra[x];
+  return o;
+}
+
+/* ---------- 10 画幅 / 视场 / 采样 ---------- */
+CALCS.push(
+{
+  id: '11', cat: 'format', name: '视场角：焦距 → 视野', tags: ['FOV', '等效焦距'],
+  brief: '给定画幅与物理焦距，算出水平、垂直、对角视场角，以及 1 米处的实际画面尺寸。',
+  fields: [fSen(), fN('f', '物理焦距', 50, 'mm', '等效焦距会自动按裁切系数换算', 0.3, 5000)],
+  calc: function (v) {
+    var L = lens(v), a = fovAngles(L.w, L.h, L.f);
+    return {
+      out: [
+        O('水平视场', num(a.fh, 2) + '°', { big: 1, accent: 1 }),
+        O('垂直视场', num(a.fv, 2) + '°'),
+        O('对角视场', num(a.fd, 2) + '°'),
+        O('等效焦距', num(L.eqf, 1) + ' mm'),
+        O('裁切系数', num(L.crop, 3) + '×'),
+        O('传感器对角线', num(a.diag, 2) + ' mm'),
+        O('1 m 处画面', num(2 * Math.tan(rad(a.fh / 2)), 3) + ' × ' + num(2 * Math.tan(rad(a.fv / 2)), 3) + ' m', { wide: 1 })
+      ],
+      note: '视场角只由「画幅尺寸 / 焦距」决定，与像素多少无关。'
+    };
+  }
+},
+{
+  id: '12', cat: 'format', name: '反推焦距：目标要拍多大', tags: ['选镜头'],
+  brief: '要在某个距离把目标铺满画面，需要多长的焦距。拍鸟、拍舞台、拍样品都用得上。',
+  fields: [
+    fSen(),
+    fS('axis', '铺满哪个方向', [['w', '宽度（水平）'], ['h', '高度（垂直）'], ['d', '对角线']], 'w'),
+    fN('dist', '拍摄距离', 10, 'm', '', 0.02, 100000),
+    fN('target', '目标真实尺寸', 2, 'm', '沿上面选的方向量', 0.001, 100000)
+  ],
+  calc: function (v) {
+    var L = lens(v);
+    var dim = v.axis === 'w' ? L.w : v.axis === 'h' ? L.h : L.diag;
+    var dist = nz(v.dist, 10), target = nz(v.target, 2);
+    if (target <= 0) throw new Error('目标尺寸需大于 0');
+    var f = dim * dist / target;
+    var a = fovAngles(L.w, L.h, f);
+    var eqf = f * cropOf(L.w, L.h);
+    return {
+      out: [
+        O('所需物理焦距', num(f, 1) + ' mm', { big: 1, accent: 1 }),
+        O('等效焦距', num(eqf, 0) + ' mm'),
+        O('最接近的常规焦段', (function () {
+          var list = [8, 12, 14, 16, 20, 24, 28, 35, 50, 85, 100, 135, 200, 300, 400, 600, 800];
+          var best = list.reduce(function (p, c) { return Math.abs(c - eqf) < Math.abs(p - eqf) ? c : p; });
+          return best + ' mm';
+        })()),
+        O('此时水平视场', num(a.fh, 1) + '°'),
+        O('此时垂直视场', num(a.fv, 1) + '°'),
+        O('画面放大率', num(dist / target, 2) + ' 倍距比', { wide: 1 })
+      ],
+      note: eqf > 800 ? '<b>提醒</b>等效焦距超过 800mm，属于超远摄，注意空气扰动与脚架稳定。'
+        : eqf < 8 ? '<b>提醒</b>等效焦距小于 8mm，已是鱼眼级别，普通镜头难以实现。'
+        : '距离 × 传感器尺寸 ÷ 目标尺寸 = 所需焦距，这是最直接的选镜头公式。'
+    };
+  }
+},
+{
+  id: '13', cat: 'format', name: '画面尺寸：这个距离能拍多宽', tags: ['取景'],
+  brief: '站在某处用某支镜头，画面里到底装得下多少米。布景、拍合影、拍建筑前先量一下。',
+  fields: [fSen(), fN('f', '物理焦距', 35, 'mm', '', 0.3, 5000), fN('dist', '拍摄距离', 5, 'm', '', 0.02, 100000)],
+  calc: function (v) {
+    var L = lens(v), a = fovAngles(L.w, L.h, L.f), d = nz(v.dist, 5);
+    return {
+      out: [
+        O('画面宽度', num(2 * d * Math.tan(rad(a.fh / 2)), 2) + ' m', { big: 1, accent: 1 }),
+        O('画面高度', num(2 * d * Math.tan(rad(a.fv / 2)), 2) + ' m'),
+        O('画面对角', num(2 * d * Math.tan(rad(a.fd / 2)), 2) + ' m'),
+        O('每米画面宽', num(2 * Math.tan(rad(a.fh / 2)), 4) + ' m'),
+        O('每米画面高', num(2 * Math.tan(rad(a.fv / 2)), 4) + ' m'),
+        O('等效焦距', num(L.eqf, 0) + ' mm')
+      ],
+      note: '画面尺寸 = 2 × 距离 × tan(视场角 / 2)。想要更窄的画面，要么靠近，要么换长焦。'
+    };
+  }
+},
+{
+  id: '14', cat: 'format', name: '裁切系数与等效焦距', tags: ['全画幅等效'],
+  brief: '小画幅换算成全画幅视角，或者反过来：想得到某个等效焦距，实际该用多长的镜头。',
+  fields: [
+    fS('mode', '换算方向', [['a', '由传感器算裁切 / 等效焦距'], ['b', '已知等效焦距，求真焦距'], ['c', '两台相机同视角换算']], 'a'),
+    fSen('相机 A 传感器'),
+    fN('f', '物理焦距', 50, 'mm', '模式 b 时不填此项', 0.3, 5000, undefined),
+    fN('eqf', '想达到的等效焦距', 50, 'mm', '仅模式 b 使用', 1, 3000),
+    { k: 'sensor2', label: '相机 B 传感器', kind: 'sensor', def: DEFAULT_SENSOR, when: function (v) { return v.mode === 'c'; } }
+  ],
+  calc: function (v) {
+    var L = lens(v), crop = L.crop;
+    if (v.mode === 'b') {
+      var eq = nz(v.eqf, 50) / crop;
+      return {
+        out: [
+          O('所需物理焦距', num(eq, 2) + ' mm', { big: 1, accent: 1 }),
+          O('裁切系数', num(crop, 3) + '×'),
+          O('目标等效焦距', num(nz(v.eqf, 50), 0) + ' mm')
+        ],
+        note: '等效焦距 = 物理焦距 × 裁切系数。裁切系数只影响视角，不会改变曝光。'
+      };
+    }
+    if (v.mode === 'c') {
+      var s2 = SENSORS[v.sensor2] || SENSORS[DEFAULT_SENSOR];
+      var c1 = cropOf(L.w, L.h), c2 = cropOf(s2.w, s2.h);
+      var f2 = L.f * c1 / c2;
+      return {
+        out: [
+          O('B 上要用的焦距', num(f2, 2) + ' mm', { big: 1, accent: 1 }),
+          O('A 的等效焦距', num(L.f * c1, 0) + ' mm'),
+          O('A 裁切 / B 裁切', num(c1, 2) + '× / ' + num(c2, 2) + '×'),
+          O('B 设备', s2.n)
+        ],
+        note: '两台相机视角相同 ⟺ 物理焦距 × 裁切系数 相等。'
+      };
+    }
+    var eqf = L.f * crop;
+    return {
+      out: [
+        O('等效全画幅焦距', num(eqf, 1) + ' mm', { big: 1, accent: 1 }),
+        O('裁切系数', num(crop, 4) + '×'),
+        O('等效光圈（同景深）', 'F' + num(nz(v.n, 2.8) * crop, 1)),
+        O('通光量差', num(2 * Math.log2(crop), 2) + ' 档')
+      ],
+      note: '裁切系数 = 43.27 mm ÷ 传感器对角线。想「同视角 + 同景深 + 同噪点」，小画幅要用更小的 F 值与更低的 ISO。'
+    };
+  }
+},
+{
+  id: '15', cat: 'format', name: '像素规格：像元间距与密度', tags: ['像素', '打印上限'],
+  brief: '知道传感器尺寸和像素数，就能算出像元大小、像素密度，以及 300dpi 下的最大打印尺寸。',
+  fields: [
+    fSen(),
+    fN('pxw', '横向像素', 6000, 'px', '', 100, 200000),
+    fN('pxh', '纵向像素', 4000, 'px', '', 100, 200000)
+  ],
+  calc: function (v) {
+    var L = lens(v), pxw = nz(v.pxw, 6000), pxh = nz(v.pxh, 4000);
+    var pitch = pitchUM(L.w, pxw);
+    var mp = pxw * pxh / 1e6;
+    var aspectPx = pxw / pxh, aspectS = L.w / L.h;
+    return {
+      out: [
+        O('像元间距', num(pitch, 2) + ' um', { big: 1, accent: 1 }),
+        O('总像素', num(mp, 2) + ' MP'),
+        O('像素密度', num(1e4 / (pitch * pitch), 1) + ' 万 / cm²'),
+        O('传感器面积', num(L.w * L.h / 100, 1) + ' cm²'),
+        O('300 dpi 打印', num(pxw / 300 * 2.54, 1) + ' × ' + num(pxh / 300 * 2.54, 1) + ' cm'),
+        O('200 dpi 打印', num(pxw / 200 * 2.54, 1) + ' × ' + num(pxh / 200 * 2.54, 1) + ' cm'),
+        O('单像素张角（本焦距）', num(pixelAngleDeg(pitch, L.f) * 3600, 1) + ' 角秒', { wide: 1 })
+      ],
+      note: Math.abs(aspectPx - aspectS) / aspectS > 0.02
+        ? '<b>注意</b>像素纵横比与传感器纵横比不一致，像元可能不是正方形，实际焦距会略微变形。'
+        : '像元越小，理论分辨率越高，但更容易被衍射和噪声吃掉。'
+    };
+  }
+},
+{
+  id: '16', cat: 'format', name: '衍射极限与艾里斑', tags: ['DLA', '最佳光圈'],
+  brief: '像素越密，可用光圈反而越窄。这里给出开始可见软化的光圈值，以及各档的艾里斑大小。',
+  fields: [fSen(), fN('pxw', '横向像素', 6000, 'px', '', 100, 200000)],
+  calc: function (v) {
+    var L = lens(v), pitch = pitchUM(L.w, nz(v.pxw, 6000));
+    var rows = [1.4, 2, 2.8, 4, 5.6, 8, 11, 16, 22, 32].map(function (n) {
+      var a = airyUM(n);
+      var r = a / pitch;
+      return ['F' + n, num(a, 2), num(r, 2), r < 1.5 ? '轻微' : r < 3 ? '可见' : '明显'];
+    });
+    return {
+      out: [
+        O('开始可见软化', 'F' + num(1.49 * pitch, 1), { big: 1, accent: 1 }),
+        O('明显损失细节', 'F' + num(2.98 * pitch, 1)),
+        O('建议日常上限', 'F' + num(1.8 * pitch, 1)),
+        O('像元间距', num(pitch, 2) + ' um')
+      ],
+      table: { cols: ['光圈', '艾里斑 um', '占像素', '影响'], rows: rows },
+      note: '绿光 550nm：艾里斑直径 = 2.44 × 波长 × 光圈值。小于 1.5 像素基本看不出，超过 3 像素就明显发软。'
+    };
+  }
+},
+{
+  id: '17', cat: 'format', name: '跨画幅等效换算', tags: ['换门', '等效光圈'],
+  brief: '从一套系统换到另一套，要拿到同样的视角、景深和噪点，焦距 / 光圈 / ISO 各该怎么换。',
+  fields: [
+    fSen('原设备传感器'),
+    fN('f', '原镜头焦距', 50, 'mm', '', 0.3, 5000),
+    fN('n', '原光圈', 2.8, 'F', '', 0.5, 128),
+    fN('iso', '原 ISO', 100, 'ISO', '', 6, 409600),
+    { k: 'sensor2', label: '目标设备传感器', kind: 'sensor', def: DEFAULT_SENSOR }
+  ],
+  calc: function (v) {
+    var A = lens(v);
+    var s2 = SENSORS[v.sensor2] || SENSORS[DEFAULT_SENSOR];
+    var c1 = cropOf(A.w, A.h), c2 = cropOf(s2.w, s2.h);
+    var k = c2 / c1;
+    return {
+      out: [
+        O('同视角所需焦距', num(A.f * k, 1) + ' mm', { big: 1, accent: 1 }),
+        O('同景深所需光圈', 'F' + num(nz(v.n, 2.8) * k, 2)),
+        O('同噪点所需 ISO', 'ISO' + num(nz(v.iso, 100) * k * k, 0)),
+        O('两机视角', '一致'),
+        O('通光量差', num(-2 * Math.log2(k), 2) + ' 档'),
+        O('目标画幅裁切', num(c2, 2) + '×')
+      ],
+      note: '小画幅要同时满足「同视角 + 同景深 + 同噪点」，必须用更小的 F 值与更低的 ISO，这是物理限制，不是镜头不行。'
+    };
+  }
+},
+{
+  id: '18', cat: 'format', name: '裁切后还剩多少像素', tags: ['二次构图'],
+  brief: '后期裁一刀，像素和视角都会变。先算清楚还能印多大，避免裁完不够用。',
+  fields: [
+    fSen(),
+    fN('pxw', '原图横向像素', 6000, 'px', '', 100, 200000),
+    fN('pxh', '原图纵向像素', 4000, 'px', '', 100, 200000),
+    fN('ratio', '裁切倍率', 1.5, '×', '1.5 = 线性尺寸只剩 1/1.5', 1, 8)
+  ],
+  calc: function (v) {
+    var L = lens(v), r = nz(v.ratio, 1.5);
+    var pxw = nz(v.pxw, 6000), pxh = nz(v.pxh, 4000);
+    var before = pxw * pxh / 1e6, after = (pxw / r) * (pxh / r) / 1e6;
+    return {
+      out: [
+        O('裁切后像素', num(after, 2) + ' MP', { big: 1, accent: 1 }),
+        O('裁切后尺寸', Math.round(pxw / r) + ' × ' + Math.round(pxh / r) + ' px'),
+        O('像素损失', num((1 - after / before) * 100, 1) + '%'),
+        O('视角变化', '等效 ×' + num(r, 1) + '（' + num(L.eqf, 0) + ' → ' + num(L.eqf * r, 0) + ' mm）'),
+        O('300 dpi 长边', num(pxw / r / 300 * 2.54, 1) + ' cm')
+      ],
+      note: '裁切不创造细节：它只是把已有像素放大，噪点、色散、衍射都会一起被放大。'
+    };
+  }
+}
+);
+
+/* ---------- 20 景深 / 对焦 ---------- */
+CALCS.push(
+{
+  id: '21', cat: 'focus', name: '景深与超焦距', tags: ['DOF', '弥散圆'],
+  brief: '给定焦距、光圈、对焦距离，算出清晰范围的两端，以及让远景到无穷的超焦距。',
+  fields: [fSen(), fN('f', '物理焦距', 50, 'mm', '', 0.3, 5000), fN('n', '光圈', 2.8, 'F', '', 0.5, 128), fN('dist', '对焦距离', 3, 'm', '', 0.01, 100000)],
+  calc: function (v) {
+    var L = lens(v), c = cocOf(L.w, L.h);
+    var d = dofRange(L.f, nz(v.n, 2.8), nz(v.dist, 3) * 1000, c);
+    var total = d.far === Infinity ? Infinity : d.far - d.near;
+    return {
+      out: [
+        O('清晰近界', num(d.near / 1000, 3) + ' m', { big: 1 }),
+        O('清晰远界', d.far === Infinity ? '∞' : num(d.far / 1000, 3) + ' m', { big: 1 }),
+        O('总景深', total === Infinity ? '∞' : num(total / 1000, 3) + ' m'),
+        O('超焦距', num(d.H / 1000, 2) + ' m', { accent: 1 }),
+        O('允许弥散圆', num(c * 1000, 1) + ' um'),
+        O('对焦 / 超焦距', num(nz(v.dist, 3) * 1000 / d.H * 100, 1) + '%')
+      ],
+      note: nz(v.dist, 3) * 1000 >= d.H
+        ? '已超过超焦距，远界为无穷远；此时再往远对焦，只会白白损失近景。'
+        : '弥散圆按「对角线 / 1500」计算，比传统 0.03mm 略严格，适合高像素机身。'
+    };
+  }
+},
+{
+  id: '22', cat: 'focus', name: '景深表：各光圈对比', tags: ['表格'],
+  brief: '同一构图下把光圈从 F1.4 收到 F22，近界、远界、总景深怎么变。',
+  fields: [fSen(), fN('f', '物理焦距', 50, 'mm', '', 0.3, 5000), fN('dist', '对焦距离', 3, 'm', '', 0.01, 100000)],
+  calc: function (v) {
+    var L = lens(v), c = cocOf(L.w, L.h), d0 = nz(v.dist, 3) * 1000;
+    var rows = [1.4, 2, 2.8, 4, 5.6, 8, 11, 16, 22].map(function (n) {
+      var d = dofRange(L.f, n, d0, c);
+      var total = d.far === Infinity ? Infinity : (d.far - d.near) / 1000;
+      return ['F' + n, num(d.H / 1000, 2), num(d.near / 1000, 2),
+        d.far === Infinity ? '∞' : num(d.far / 1000, 2),
+        total === Infinity ? '∞' : num(total, 2) + ' m'];
+    });
+    return {
+      out: [O('镜头', L.f + ' mm（' + L.name + '）'), O('对焦距离', num(nz(v.dist, 3), 2) + ' m'), O('弥散圆', num(c * 1000, 1) + ' um')],
+      table: { cols: ['光圈', '超焦距 m', '近界 m', '远界 m', '总景深'], rows: rows },
+      note: '光圈每收小一档，景深约增加 √2 倍；而近界变化远小于远界，这就是「对焦往前放一点更划算」的原因。'
+    };
+  }
+},
+{
+  id: '23', cat: 'focus', name: '超焦距对焦法', tags: ['风光', '全清晰'],
+  brief: '想让前景到无穷都清晰：对焦到 2 倍近界，光圈收到理论值即可，不必死对无穷远。',
+  fields: [fSen(), fN('f', '物理焦距', 24, 'mm', '', 0.3, 5000), fN('near', '希望从多远开始清晰', 1, 'm', '', 0.05, 10000)],
+  calc: function (v) {
+    var L = lens(v), c = cocOf(L.w, L.h), x = nz(v.near, 1) * 1000;
+    var nReq = L.f * L.f / (c * (2 * x - L.f));
+    var list = [1.4, 1.8, 2, 2.8, 3.5, 4, 5.6, 8, 11, 16, 22, 32, 45, 64];
+    var pick = list.filter(function (n) { return n >= nReq; })[0] || 64;
+    var d = dofRange(L.f, pick, 2 * x, c);
+    return {
+      out: [
+        O('建议光圈', 'F' + pick, { big: 1, accent: 1 }),
+        O('对焦距离', num(2 * x / 1000, 2) + ' m'),
+        O('实际近界', num(d.near / 1000, 2) + ' m'),
+        O('实际远界', d.far === Infinity ? '∞' : num(d.far / 1000, 2) + ' m'),
+        O('理论光圈', 'F' + num(nReq, 2)),
+        O('超焦距', num(d.H / 1000, 2) + ' m')
+      ],
+      note: '对焦在 2 倍近界、用够小的光圈，就能把近景到无穷全部纳入景深，这是风光摄影最常用的一招。'
+    };
+  }
+},
+{
+  id: '24', cat: 'focus', name: '放大倍率与微距景深', tags: ['微距', '有效光圈'],
+  brief: '物距或工作距离换算成放大倍率，同时给出覆盖范围、有效光圈与微距景深。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 100, 'mm', '', 0.3, 5000), fN('n', '光圈', 5.6, 'F', '', 0.5, 128),
+    fS('mode', '已知哪个量', [['a', '对焦距离（从传感器平面起算）'], ['b', '工作距离（从镜头前端起算，近似）'], ['c', '已知放大倍率']], 'a'),
+    fN('u', '对焦距离', 0.5, 'm', '模式 a 使用', 0.01, 100),
+    fN('wd', '工作距离', 300, 'mm', '模式 b 使用', 1, 5000),
+    fN('mag', '放大倍率', 1, '×', '模式 c 使用', 0.01, 20)
+  ],
+  calc: function (v) {
+    var L = lens(v), N = nz(v.n, 5.6), m;
+    if (v.mode === 'b') m = L.f / nz(v.wd, 300);
+    else if (v.mode === 'c') m = nz(v.mag, 1);
+    else {
+      var u = nz(v.u, 0.5) * 1000;
+      if (u <= L.f) throw new Error('对焦距离必须大于焦距');
+      m = L.f / (u - L.f);
+    }
+    var c = cocOf(L.w, L.h);
+    var nEff = N * (1 + m);
+    var dof = 2 * nEff * c * (1 + m) / (m * m);
+    return {
+      out: [
+        O('放大倍率', num(m, 3) + ' X', { big: 1, accent: 1 }),
+        O('比例', '1 : ' + num(1 / m, 1)),
+        O('画面覆盖', num(L.w / m, 1) + ' × ' + num(L.h / m, 1) + ' mm'),
+        O('有效光圈', 'F' + num(nEff, 2)),
+        O('近摄光损失', num(2 * Math.log2(1 + m), 2) + ' 档'),
+        O('微距总景深', num(dof, 2) + ' mm')
+      ],
+      note: v.mode === 'b'
+        ? '<b>近似模型</b>工作距离法只做快速估算；镜头内对焦会缩短有效焦距，真实倍率以标称值为准。'
+        : '微距景深按「2 · N_eff · c · (1+m) / m²」估算，倍率越高景深塌得越快。'
+    };
+  }
+},
+{
+  id: '25', cat: 'focus', name: '近摄接圈与增距镜', tags: ['微距', '增距'],
+  brief: '加接圈能提倍率但丢无穷远，加增距镜加焦距又加倍率，各自的光圈代价也一起算。',
+  fields: [
+    fSen(), fN('f', '镜头焦距', 50, 'mm', '', 0.3, 5000), fN('mag0', '原生放大倍率', 0.15, '×', '普通镜头约 0.15', 0, 10),
+    fN('ext', '接圈总长度', 0, 'mm', '没有就填 0', 0, 300), fN('tc', '增距镜倍率', 1, '×', '没有就填 1', 1, 3),
+    fN('n', '光圈', 5.6, 'F', '', 0.5, 128)
+  ],
+  calc: function (v) {
+    var L = lens(v), tc = nz(v.tc, 1), m0 = nz(v.mag0, 0.15), ext = nz(v.ext, 0), N = nz(v.n, 5.6);
+    var fNew = L.f * tc;
+    var m = m0 * tc + ext / fNew;
+    var nEff = N * tc * (1 + m);
+    return {
+      out: [
+        O('加装后焦距', num(fNew, 1) + ' mm'),
+        O('加装后倍率', num(m, 3) + ' X', { big: 1, accent: 1 }),
+        O('等效光圈', 'F' + num(nEff, 2)),
+        O('画面覆盖', num(L.w / m, 1) + ' × ' + num(L.h / m, 1) + ' mm'),
+        O('倍率提升', num(m / (m0 || 1), 2) + ' ×')
+      ],
+      note: '接圈：倍率 = 接圈长度 ÷ 焦距，代价是无法对无穷远；增距镜：焦距与倍率同时 ×N，代价是光圈与画质。'
+    };
+  }
+},
+{
+  id: '26', cat: 'focus', name: '焦点堆栈步进', tags: ['景深合成'],
+  brief: '微距景深只有毫米级，一次拍不全。算出单张景深、建议步进和需要拍多少张。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 100, 'mm', '', 0.3, 5000), fN('n', '光圈', 8, 'F', '', 0.5, 128),
+    fN('mag', '放大倍率', 1, '×', '', 0.05, 20), fN('ov', '重叠率', 0.7, '', '建议 0.6~0.8', 0.1, 0.95),
+    fN('depth', '需要覆盖的景深', 20, 'mm', '', 0.1, 500)
+  ],
+  calc: function (v) {
+    var L = lens(v), N = nz(v.n, 8), m = nz(v.mag, 1), ov = nz(v.ov, 0.7), dep = nz(v.depth, 20);
+    var c = cocOf(L.w, L.h);
+    var nEff = N * (1 + m);
+    var single = 2 * nEff * c * (1 + m) / (m * m);
+    var step = single * (1 - ov);
+    var shots = Math.ceil(dep / step) + 1;
+    return {
+      out: [
+        O('单张景深', num(single, 3) + ' mm', { big: 1 }),
+        O('建议步进', num(step, 3) + ' mm', { accent: 1 }),
+        O('建议张数', shots + ' 张', { big: 1 }),
+        O('总位移', num(step * (shots - 1), 1) + ' mm'),
+        O('有效光圈', 'F' + num(nEff, 2))
+      ],
+      note: '步进宁小勿大：漏一层会在成片里留下一条糊带，多拍几张后期删掉即可。'
+    };
+  }
+},
+{
+  id: '27', cat: 'focus', name: '安全快门与手抖拖影', tags: ['手持', '防抖'],
+  brief: '1/焦距 只是经验值。按像元张角算，才能知道多慢的快门会真的抖出拖影。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 50, 'mm', '', 0.3, 5000), fN('pxw', '横向像素', 6000, 'px', '', 100, 200000),
+    fN('shake', '手抖角速度', 0.5, '°/s', '普通人 0.3~1.0', 0.01, 20), fN('ibis', '防抖补偿', 0, '档', '没有就填 0', 0, 8)
+  ],
+  calc: function (v) {
+    var L = lens(v), pitch = pitchUM(L.w, nz(v.pxw, 6000));
+    var angle = pixelAngleDeg(pitch, L.f);
+    var tRule = 1 / L.eqf;
+    var tPixel = angle / nz(v.shake, 0.5);
+    var ibis = nz(v.ibis, 0);
+    var rec = Math.min(tRule, tPixel);
+    return {
+      out: [
+        O('建议快门', fmtShutter(rec), { big: 1, accent: 1 }),
+        O('1/等效焦距 法则', fmtShutter(tRule)),
+        O('像素级安全快门', fmtShutter(tPixel)),
+        O('单像素张角', num(angle * 3600, 1) + ' 角秒'),
+        O('开 ' + ibis + ' 档防抖后', fmtShutter(tPixel * Math.pow(2, ibis)),
+          { wide: ibis > 0 })
+      ],
+      note: '像素越高，同样的抖动会占更多像素，所以高像素机要更快的快门；防抖每多一档，可用快门慢一倍。'
+    };
+  }
+}
+);
+
+/* ---------- 30 曝光 ---------- */
+CALCS.push(
+{
+  id: '31', cat: 'expo', name: 'EV 与曝光求解', tags: ['曝光三角', 'EV100'],
+  brief: '已知两项求第三项：从「光圈 + 快门 + ISO」读出 EV，或者反过来凑出想要的曝光。',
+  fields: [
+    fS('mode', '要求解哪个量', [
+      ['a', '已知 F / 快门 / ISO，求 EV'],
+      ['b', '已知 EV / F / 快门，求所需 ISO'],
+      ['c', '已知 EV / ISO / 快门，求所需光圈'],
+      ['d', '已知 EV / F / ISO，求所需快门']
+    ], 'a'),
+    fN('n', '光圈', 8, 'F', '', 0.5, 128),
+    fSh('t', '快门', 1 / 125, '可写 1/125、0.008、8ms、2s'),
+    fN('iso', 'ISO', 100, 'ISO', '', 6, 409600),
+    fN('ev', '目标 EV100', 14, 'EV', '模式 a 时不使用', -8, 22)
+  ],
+  calc: function (v) {
+    var N = nz(v.n, 8), t = nz(v.t, 1 / 125), iso = nz(v.iso, 100), ev = nz(v.ev, 14);
+    if (v.mode === 'b') {
+      var needIso = N * N / (t * Math.pow(2, ev)) * 100;
+      return {
+        out: [
+          O('所需 ISO', 'ISO' + num(needIso, 0), { big: 1, accent: 1 }),
+          O('现有组合', 'F' + N + '，' + fmtShutter(t)),
+          O('目标 EV100', num(ev, 2)),
+          O('评价', needIso > 51200 ? '过高，画质明显下降' : needIso < 50 ? '过低，可能过曝' : '可用范围')
+        ],
+        note: 'ISO 每翻倍 = 多 1 档 = EV 值 +1。ISO 拉太高会牺牲动态范围与色彩。'
+      };
+    }
+    if (v.mode === 'c') {
+      var needN = Math.sqrt(Math.pow(2, ev) * t * (iso / 100));
+      return {
+        out: [
+          O('所需光圈', 'F' + num(needN, 2), { big: 1, accent: 1 }),
+          O('现有组合', 'ISO' + iso + '，' + fmtShutter(t)),
+          O('目标 EV100', num(ev, 2))
+        ],
+        note: '光圈每大一档进光量翻倍 = EV 值 -1。'
+      };
+    }
+    if (v.mode === 'd') {
+      var needT = N * N / ((iso / 100) * Math.pow(2, ev));
+      return {
+        out: [
+          O('所需快门', fmtShutter(needT), { big: 1, accent: 1 }),
+          O('精确秒数', num(needT, 4) + ' s'),
+          O('是否需要 B 门', needT > 30 ? '是（超过 30s）' : '否'),
+          O('目标 EV100', num(ev, 2))
+        ],
+        note: needT > 30 ? '超过 30 秒需要 B 门 + 快门线，并考虑长曝噪点。' : '快门每慢一档进光量翻倍 = EV 值 -1。'
+      };
+    }
+    var realEv = ev100(N, t, iso);
+    var scenes = [[3, '烛光夜景'], [5, '城市夜景'], [7, '室内弱光'], [9, '室内正常照明'], [11, '阴天室外'], [12, '多云'], [13, '晴天阴影'], [14, '晴天顺光'], [15, '雪地 / 沙滩'], [16, '极亮反光面']];
+    var near = scenes.reduce(function (p, c) { return Math.abs(c[0] - realEv) < Math.abs(p[0] - realEv) ? c : p; });
+    return {
+      out: [
+        O('EV（以 ISO100 计）', num(realEv, 2), { big: 1, accent: 1 }),
+        O('对应场景', near[1]),
+        O('曝光组合', 'F' + N + ' · ' + fmtShutter(t) + ' · ISO' + iso)
+      ],
+      note: 'EV 越大场景越亮：每 +1 就要少一档进光量（更快快门 / 更小光圈 / 更低 ISO）。'
+    };
+  }
+},
+{
+  id: '32', cat: 'expo', name: '曝光等值组合表', tags: ['表格', '换算'],
+  brief: '同一个 EV 下，各光圈配多少快门才等价。背参数表不如随手查一张。',
+  fields: [fN('ev', '目标 EV100', 12, 'EV', '', -6, 20)],
+  calc: function (v) {
+    var ev = nz(v.ev, 12), isos = [100, 400, 1600, 6400];
+    var rows = [1.4, 2, 2.8, 4, 5.6, 8, 11, 16].map(function (n) {
+      var row = ['F' + n];
+      isos.forEach(function (iso) {
+        row.push(fmtShutter(n * n / ((iso / 100) * Math.pow(2, ev))));
+      });
+      return row;
+    });
+    return {
+      out: [O('EV100', num(ev, 1)), O('组合数', rows.length + ' × ' + isos.length)],
+      table: { cols: ['光圈', 'ISO 100', 'ISO 400', 'ISO 1600', 'ISO 6400'], rows: rows },
+      note: '表内任一组合曝光量相同，区别只在景深、动态模糊与噪点——这才是你要权衡的东西。'
+    };
+  }
+},
+{
+  id: '33', cat: 'expo', name: '两组曝光差几档', tags: ['对比'],
+  brief: '前后两张参数不一样，到底差多少档？一眼判断该补 ND 还是该降 ISO。',
+  fields: [
+    fN('n1', 'A 光圈', 8, 'F', '', 0.5, 128), fSh('t1', 'A 快门', 1 / 125), fN('iso1', 'A ISO', 100, 'ISO', '', 6, 409600),
+    fN('n2', 'B 光圈', 2.8, 'F', '', 0.5, 128), fSh('t2', 'B 快门', 1 / 1000), fN('iso2', 'B ISO', 400, 'ISO', '', 6, 409600)
+  ],
+  calc: function (v) {
+    var N1 = nz(v.n1, 8), t1 = nz(v.t1, 1 / 125), i1 = nz(v.iso1, 100);
+    var N2 = nz(v.n2, 2.8), t2 = nz(v.t2, 1 / 1000), i2 = nz(v.iso2, 400);
+    var d = Math.log2(N2 * N2 * t1 / (N1 * N1 * t2)) - Math.log2(i2 / i1);
+    return {
+      out: [
+        O('EV 差', (d > 0 ? '+' : '') + num(d, 2) + ' 档', { big: 1, accent: 1 }),
+        O('含义', d > 0.05 ? 'B 更亮' : d < -0.05 ? 'B 更暗' : '完全等价'),
+        O('A', 'F' + N1 + ' · ' + fmtShutter(t1) + ' · ISO' + i1),
+        O('B', 'F' + N2 + ' · ' + fmtShutter(t2) + ' · ISO' + i2),
+        O('换算成 ND', Math.abs(d) > 0.05 ? 'ND' + num(Math.pow(2, Math.abs(d)), 0) : '无需')
+      ],
+      note: '差 1 档 = 光线差一倍 = 快门 / 光圈 / ISO 任一翻倍。三者的变化可以相互抵消。'
+    };
+  }
+},
+{
+  id: '34', cat: 'expo', name: 'ND 滤镜与长曝时间', tags: ['ND', '慢门'],
+  brief: '按档数或 ND 编号输入减光量，得到加滤镜后的快门，并判断要不要上 B 门。',
+  fields: [
+    fSh('t', '不加滤镜的快门', 1 / 125, '如 1/125、2s'),
+    fS('mode', '输入方式', [['a', '按减光档数（10 档 = ND1024）'], ['b', '按 ND 倍数（ND1000 这种写法）']], 'a'),
+    fN('stops', '减光档数', 10, '档', '', 0, 20),
+    fN('ndx', 'ND 倍数', 1000, '倍', 'ND1000 就填 1000', 1, 2000000)
+  ],
+  calc: function (v) {
+    var base = nz(v.t, 1 / 125);
+    var stops = v.mode === 'b' ? Math.log2(nz(v.ndx, 1000)) : nz(v.stops, 10);
+    var t = base * Math.pow(2, stops);
+    return {
+      out: [
+        O('加滤镜后快门', fmtShutter(t), { big: 1, accent: 1 }),
+        O('精确秒数', num(t, 2) + ' s'),
+        O('减光量', num(stops, 2) + ' 档'),
+        O('等效 ND', 'ND' + num(Math.pow(2, stops), 0)),
+        O('是否需要 B 门', t > 30 ? '是' : '否')
+      ],
+      note: '两片 ND 叠加档数相加；叠 CPL 大约再吃 1~1.5 档。长曝记得关机身降噪、盖取景器。'
+    };
+  }
+},
+{
+  id: '35', cat: 'expo', name: '长曝互易律补偿', tags: ['胶片', '长曝'],
+  brief: '按介质给出长曝补偿的建议：数码基本不用补偿，胶片的乳剂在长曝下会失效。',
+  fields: [fSh('t', '测光给出的快门', 8, '如 8s'), fS('kind', '介质', [['d', '数码（一般无需补偿）'], ['f', '胶片（互易律失效）']], 'd')],
+  calc: function (v) {
+    var t0 = nz(v.t, 8), comp = 0, why = '';
+    if (v.kind === 'f') {
+      if (t0 < 1) { comp = 0; why = '1s 以内基本不用补'; }
+      else if (t0 < 4) { comp = 1 / 3; why = '+1/3 档'; }
+      else if (t0 < 16) { comp = 0.5; why = '+1/2 档'; }
+      else if (t0 < 60) { comp = 1; why = '+1 档'; }
+      else if (t0 < 240) { comp = 1.5; why = '+1.5 档'; }
+      else { comp = 2; why = '+2 档起，需实测'; }
+    } else {
+      why = '数码传感器线性较好，长曝主要靠降噪，不需补偿';
+    }
+    var real = t0 * Math.pow(2, comp);
+    return {
+      out: [
+        O('实际应给', fmtShutter(real), { big: 1, accent: 1 }),
+        O('补偿量', (comp > 0 ? '+' : '') + num(comp, 2) + ' 档'),
+        O('依据', why),
+        O('测光值', fmtShutter(t0)),
+        O('实际秒数', num(real, 2) + ' s')
+      ],
+      note: '胶片互易律因乳剂而异，这里只是经验区间；重要拍摄请按 1/3 档包围实测。'
+    };
+  }
+},
+{
+  id: '36', cat: 'expo', name: '运动模糊与摇拍', tags: ['拖影', '摇拍'],
+  brief: '物体多快、离多远、用多快的快门，会拖几个像素。也能反推「控在 1 像素内」的快门。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 50, 'mm', '', 0.3, 5000), fN('pxw', '横向像素', 6000, 'px', '', 100, 200000),
+    fN('speed', '被摄体速度', 1, 'm/s', '', 0.001, 2000), fN('dist', '拍摄距离', 10, 'm', '', 0.05, 2000),
+    fSh('t', '曝光时间', 1 / 500)
+  ],
+  calc: function (v) {
+    var L = lens(v), pitch = pitchUM(L.w, nz(v.pxw, 6000));
+    var sp = nz(v.speed, 1), d = nz(v.dist, 10), t = nz(v.t, 1 / 500);
+    var px = sp * t * L.f * 1000 / (d * pitch);
+    var t1 = d * pitch / (sp * L.f * 1000);
+    var ang = Math.atan(sp / d) / DEG;
+    return {
+      out: [
+        O('模糊长度', num(px, 2) + ' 像素', { big: 1, accent: px > 2 ? 1 : 0 }),
+        O('控在 1 像素内', fmtShutter(t1), { accent: 1 }),
+        O('控在 2 像素内', fmtShutter(2 * t1)),
+        O('摇拍匹配角速度', num(ang, 2) + ' °/s'),
+        O('当前快门', fmtShutter(t))
+      ],
+      note: px > 2
+        ? '<b>拖影明显</b>：缩短快门、提高 ISO，或改用闪光凝固。'
+        : '模糊控制在 1~2 像素内，缩图基本看不出来。'
+    };
+  }
+},
+{
+  id: '37', cat: 'expo', name: '曝光补偿与包围曝光', tags: ['包围', '补偿'],
+  brief: '加多少 EV 就换算成多少快门；同时给出包围曝光的各张快门。',
+  fields: [
+    fSh('t', '基准快门', 1 / 125),
+    fN('comp', '曝光补偿', 0, 'EV', '+ 更亮 / − 更暗', -5, 5),
+    fN('count', '包围张数', 3, '张', '', 1, 9),
+    fN('step', '包围步长', 1, '档', '', 0.1, 5)
+  ],
+  calc: function (v) {
+    var base = nz(v.t, 1 / 125), comp = nz(v.comp, 0);
+    var newT = base * Math.pow(2, comp);
+    var count = Math.round(nz(v.count, 3)), step = nz(v.step, 1);
+    var half = Math.floor(count / 2);
+    var list = [];
+    for (var i = 0; i < count; i++) {
+      list.push(fmtShutter(newT * Math.pow(2, (i - half) * step)));
+    }
+    return {
+      out: [
+        O('补偿后快门', fmtShutter(newT), { big: 1, accent: 1 }),
+        O('包围设置', count + ' 张 · 步长 ' + step + ' 档'),
+        O('各张快门', list.join('  /  '), { wide: 1 })
+      ],
+      note: '+EV = 更亮 = 更慢快门 / 更大光圈 / 更高 ISO，三者等效；包围时优先动快门，画面结构才一致。'
+    };
+  }
+}
+);
+
+/* ---------- 40 闪光 / 照明 ---------- */
+CALCS.push(
+{
+  id: '41', cat: 'flash', name: 'GN 正算：需要多大灯', tags: ['闪光指数'],
+  brief: '按光圈、ISO、距离反推所需 GN，并折算成你手上这盏灯要用几成功率。',
+  fields: [
+    fN('n', '光圈', 5.6, 'F', '', 0.5, 128), fN('iso', 'ISO', 100, 'ISO', '', 6, 409600),
+    fN('dist', '灯到被摄体距离', 3, 'm', '', 0.05, 500), fN('gn100', '灯的 GN（ISO100 全功率）', 60, 'GN', '未知填 60', 1, 300)
+  ],
+  calc: function (v) {
+    var N = nz(v.n, 5.6), iso = nz(v.iso, 100), d = nz(v.dist, 3), gn0 = nz(v.gn100, 60);
+    var gn = N * d * Math.sqrt(iso / 100);
+    var ratio = Math.pow(gn / gn0, 2);
+    var down = ratio > 0 ? -Math.log2(ratio) : 0;
+    return {
+      out: [
+        O('所需 GN', num(gn, 1), { big: 1, accent: 1 }),
+        O('折算到 ISO100', num(gn / Math.sqrt(iso / 100), 1)),
+        O('所需功率', num(ratio * 100, 1) + '%'),
+        O('约等于', (down > 0 ? '−' : '') + num(Math.abs(down), 1) + ' 档'),
+        O('结论', ratio <= 1 ? '功率够用' : '功率不足，需提 ISO 或靠近')
+      ],
+      note: 'GN = 光圈 × 距离（ISO100）。ISO 翻倍 GN 乘 √2；距离翻倍要 4 倍功率，也就是 2 档。'
+    };
+  }
+},
+{
+  id: '42', cat: 'flash', name: 'GN 反算：这盏灯能打多远', tags: ['灯位'],
+  brief: '知道灯的 GN 与 ISO，算最大照射距离，或反推该用多大光圈。',
+  fields: [
+    fN('gn100', '灯的 GN（ISO100 全功率）', 60, 'GN', '', 1, 300),
+    fN('iso', '拍摄 ISO', 100, 'ISO', '', 6, 409600),
+    fS('mode', '已知什么', [['a', '已知光圈，求最大距离'], ['b', '已知距离，求可用光圈']], 'a'),
+    fN('n', '光圈', 5.6, 'F', '', 0.5, 128),
+    fN('dist', '距离', 3, 'm', '仅模式 b 使用', 0.05, 500)
+  ],
+  calc: function (v) {
+    var gn0 = nz(v.gn100, 60), iso = nz(v.iso, 100), gn = gn0 * Math.sqrt(iso / 100);
+    if (v.mode === 'b') {
+      var d = nz(v.dist, 3);
+      var needN = gn / d;
+      return {
+        out: [
+          O('可用光圈', 'F' + num(needN, 2), { big: 1, accent: 1 }),
+          O('整档取用', 'F' + ([1.4, 2, 2.8, 4, 5.6, 8, 11, 16, 22, 32].filter(function (x) { return x >= needN; })[0] || 32)),
+          O('当前有效 GN', num(gn, 1))
+        ],
+        note: '实际拍摄建议比理论光圈小半档，给灯头反光与柔光箱留余量。'
+      };
+    }
+    var N = nz(v.n, 5.6);
+    var rows = [1.4, 2, 2.8, 4, 5.6, 8, 11].map(function (x) { return ['F' + x, num(gn / x, 2)]; });
+    return {
+      out: [
+        O('最大距离', num(gn / N, 2) + ' m', { big: 1, accent: 1 }),
+        O('当前有效 GN', num(gn, 1)),
+        O('光圈', 'F' + N)
+      ],
+      table: { cols: ['光圈', '最大距离 m'], rows: rows },
+      note: '距离按平方反比衰减：想多打 40% 的距离，要 2 倍功率（1 档）。'
+    };
+  }
+},
+{
+  id: '43', cat: 'flash', name: '闪光功率档位与高速同步', tags: ['HSS', '档位'],
+  brief: '全功率 GN 摊到 1/2、1/4 … 各档还剩多少 GN 和多少米，HSS 再打几折。',
+  fields: [
+    fN('gn100', '全功率 GN（ISO100）', 60, 'GN', '', 1, 300),
+    fN('n', '光圈', 5.6, 'F', '', 0.5, 128),
+    fN('hss', '高速同步损失', 2, '档', '一般 1.5~2.5', 0, 5)
+  ],
+  calc: function (v) {
+    var gn0 = nz(v.gn100, 60), N = nz(v.n, 5.6), hss = nz(v.hss, 2);
+    var evs = [0, 1, 2, 3, 4, 5, 6, 7];
+    var rows = evs.map(function (ev) {
+      var g = gn0 * Math.pow(2, -ev / 2);
+      return ['1/' + Math.pow(2, ev), '−' + ev, num(g, 1), num(g / N, 2)];
+    });
+    var gHss = gn0 * Math.pow(2, -hss / 2);
+    return {
+      out: [
+        O('HSS 后有效 GN', num(gHss, 1), { big: 1, accent: 1 }),
+        O('HSS 后距离', num(gHss / N, 2) + ' m'),
+        O('全功率距离', num(gn0 / N, 1) + ' m'),
+        O('HSS 代价', '−' + num(hss, 1) + ' 档')
+      ],
+      table: { cols: ['功率档', '相对损失', '有效 GN', 'F' + N + ' 距离 m'], rows: rows },
+      note: '功率每减一档，GN 变为 1/√2，距离缩短约 29%。HSS 靠连闪实现，损失通常 1.5~2.5 档。'
+    };
+  }
+},
+{
+  id: '44', cat: 'flash', name: '平方反比与柔光光质', tags: ['布光'],
+  brief: '光源挪动一步，曝光差几档？柔光箱相对面积多大才算柔？一次算清。',
+  fields: [
+    fN('d1', '原距离', 2, 'm', '', 0.05, 500), fN('d2', '新距离', 4, 'm', '', 0.05, 500),
+    fN('box', '柔光箱边长', 90, 'cm', '圆形填直径', 5, 500),
+    fN('boxd', '柔光箱到被摄体', 100, 'cm', '', 5, 2000)
+  ],
+  calc: function (v) {
+    var d1 = nz(v.d1, 2), d2 = nz(v.d2, 4);
+    var delta = 2 * Math.log2(d2 / d1);
+    var ratio = nz(v.box, 90) / nz(v.boxd, 100);
+    var q = ratio >= 1 ? '极柔，几乎没有边缘阴影'
+      : ratio >= 0.5 ? '柔光，过渡自然'
+      : ratio >= 0.25 ? '中性偏柔'
+      : '硬光，边缘锐利、阴影明显';
+    return {
+      out: [
+        O('光量变化', (delta > 0 ? '−' : '+') + num(Math.abs(delta), 2) + ' 档', { big: 1, accent: 1 }),
+        O('剩余光量', num(100 / Math.pow(2, delta), 1) + '%'),
+        O('柔光比值', num(ratio, 2)),
+        O('光质判断', q, { wide: 1 })
+      ],
+      note: '距离翻倍曝光减 2 档。光源相对面积越大过渡越柔：人像建议 0.5~1.0，轮廓光 0.2~0.3。'
+    };
+  }
+},
+{
+  id: '45', cat: 'flash', name: '闪光凝固能力', tags: ['凝瞬间'],
+  brief: '决定凝固的是闪光持续时间，不是快门。按 t0.5 与物体速度算拖影像素。',
+  fields: [
+    fSh('tf', '闪光持续时间 t0.5', 1 / 2000, '低功率可到 1/10000'),
+    fN('speed', '被摄体速度', 0.5, 'm/s', '', 0.001, 200),
+    fN('dist', '拍摄距离', 2, 'm', '', 0.05, 100),
+    fSen(), fN('f', '物理焦距', 85, 'mm', '', 0.3, 5000), fN('pxw', '横向像素', 6000, 'px', '', 100, 200000)
+  ],
+  calc: function (v) {
+    var L = lens(v), pitch = pitchUM(L.w, nz(v.pxw, 6000));
+    var tf = nz(v.tf, 1 / 2000), sp = nz(v.speed, 0.5), d = nz(v.dist, 2);
+    var px = sp * tf * L.f * 1000 / (d * pitch);
+    return {
+      out: [
+        O('拖影长度', num(px, 2) + ' 像素', { big: 1, accent: px > 2 ? 1 : 0 }),
+        O('结论', px <= 1 ? '凝固良好' : px <= 2.5 ? '轻微拖影' : '会糊'),
+        O('闪光时间', fmtShutter(tf)),
+        O('速度 / 距离', sp + ' m/s · ' + d + ' m')
+      ],
+      note: '功率越低闪得越短：全功率往往只有 1/300，压到 1/16 功率可到 1/8000，凝固能力反而更强。'
+    };
+  }
+}
+);
+
+/* ---------- 50 视频 / 数据 ---------- */
+CALCS.push(
+{
+  id: '51', cat: 'video', name: '快门角度与帧率', tags: ['180°'],
+  brief: '视频里的 180° 快门角，换成帧率后到底是多少分之一秒。反过来也能查。',
+  fields: [
+    fN('fps', '帧率', 25, 'fps', '', 1, 240),
+    fS('mode', '换算方向', [['a', '已知角度，求快门时间'], ['b', '已知快门时间，求角度']], 'a'),
+    fN('angle', '快门角度', 180, '°', '', 1, 360),
+    fSh('t', '快门时间', 1 / 50, '模式 b 使用')
+  ],
+  calc: function (v) {
+    var fps = nz(v.fps, 25);
+    if (v.mode === 'b') {
+      var t = nz(v.t, 1 / 50);
+      return {
+        out: [
+          O('快门角度', num(360 * fps * t, 1) + '°', { big: 1, accent: 1 }),
+          O('快门时间', fmtShutter(t)),
+          O('帧率', fps + ' fps')
+        ],
+        note: '运动模糊的多少由快门角度决定；180° 是最常见的「电影感」基准。'
+      };
+    }
+    var angle = nz(v.angle, 180);
+    var t2 = angle / (360 * fps);
+    return {
+      out: [
+        O('快门时间', fmtShutter(t2), { big: 1, accent: 1 }),
+        O('精确秒数', num(t2, 5) + ' s'),
+        O('帧间隔', fmtShutter(1 / fps)),
+        O('相对 180°', num(angle / 180, 2) + '×')
+      ],
+      note: '角度越大运动模糊越多：180° 自然，90° 干脆（适合动作），360° 拖影明显。'
+    };
+  }
+},
+{
+  id: '52', cat: 'video', name: '录制时长与存储估算', tags: ['码率', '存储'],
+  brief: '按码率和卡容量算能录多久，或反推该留多少空间。',
+  fields: [fN('bitrate', '录制码率', 100, 'Mbps', '', 1, 5000), fN('cap', '可用容量', 128, 'GB', '', 1, 4000)],
+  calc: function (v) {
+    var br = nz(v.bitrate, 100), cap = nz(v.cap, 128);
+    var mbps = br / 8;
+    var total = cap * 1000 / mbps;
+    var min = total / 60;
+    return {
+      out: [
+        O('可录时长', Math.floor(min) + ' 分 ' + Math.round((min % 1) * 60) + ' 秒', { big: 1, accent: 1 }),
+        O('小时数', num(min / 60, 2) + ' h'),
+        O('每分钟占用', num(mbps * 7.5, 1) + ' MB'),
+        O('每小时占用', num(mbps * 7.5 * 60 / 1000, 1) + ' GB')
+      ],
+      note: '容量按 1000 进制估算，实际还要扣掉格式化与缓存开销，建议留 10% 余量。'
+    };
+  }
+},
+{
+  id: '53', cat: 'video', name: '升格慢动作换算', tags: ['慢动作'],
+  brief: '120fps 放到 24fps 时间线，能慢几倍、素材会被拉长多久。',
+  fields: [fN('rec', '拍摄帧率', 120, 'fps', '', 1, 1000), fN('play', '时间线帧率', 24, 'fps', '', 1, 240), fN('real', '真实动作时长', 5, 's', '', 0.1, 600)],
+  calc: function (v) {
+    var rec = nz(v.rec, 120), play = nz(v.play, 24), real = nz(v.real, 5);
+    var factor = rec / play;
+    return {
+      out: [
+        O('慢放倍数', num(factor, 2) + ' ×', { big: 1, accent: 1 }),
+        O('成片时长', num(real * factor, 2) + ' s'),
+        O('所需素材帧数', Math.round(rec * real) + ' 帧'),
+        O('播放速度', num(1 / factor, 3) + ' ×')
+      ],
+      note: '升格时快门仍守 180° 法则（如 120fps 用 1/240），否则慢下来会看到频闪。'
+    };
+  }
+},
+{
+  id: '54', cat: 'video', name: '延时摄影参数', tags: ['Timelapse'],
+  brief: '拍多久、隔几秒一张，最后成片几秒。日落、车流、星轨都先算再开拍。',
+  fields: [fN('interval', '拍摄间隔', 5, 's', '', 0.1, 3600), fN('total', '总拍摄时长', 60, 'min', '', 0.1, 1440), fN('fps', '成片帧率', 30, 'fps', '', 1, 120)],
+  calc: function (v) {
+    var itv = nz(v.interval, 5), total = nz(v.total, 60) * 60, fps = nz(v.fps, 30);
+    var shots = Math.floor(total / itv);
+    var dur = shots / fps;
+    return {
+      out: [
+        O('成片时长', num(dur, 2) + ' s', { big: 1, accent: 1 }),
+        O('总张数', shots + ' 张'),
+        O('成片帧数', shots + ' 帧'),
+        O('压缩比', num(total / dur, 1) + ' ×'),
+        O('占用估算', num(shots * 25, 0) + ' MB（按 25MB/张 RAW）')
+      ],
+      note: '间隔要短于画面明显变化的时间尺度：云层 3~5s、日落 8~15s、星轨 20~30s。'
+    };
+  }
+},
+{
+  id: '55', cat: 'video', name: 'RAW 文件体积', tags: ['存储'],
+  brief: '一张 RAW 到底多大？无损压缩后又能省多少？按机型参数估。',
+  fields: [
+    fN('pxw', '横向像素', 6000, 'px', '', 100, 200000),
+    fN('pxh', '纵向像素', 4000, 'px', '', 100, 200000),
+    fN('bits', '位深', 14, 'bit', '常见 12 / 14', 8, 16),
+    fN('ratio', '压缩比', 1, '', '无损压缩约 0.6~0.75', 0.2, 1)
+  ],
+  calc: function (v) {
+    var px = nz(v.pxw, 6000) * nz(v.pxh, 4000);
+    var raw = px * nz(v.bits, 14) / 8 / 1024 / 1024;
+    var comp = raw * nz(v.ratio, 1);
+    return {
+      out: [
+        O('单张未压缩', num(raw, 1) + ' MB', { big: 1 }),
+        O('压缩后', num(comp, 1) + ' MB', { accent: 1 }),
+        O('128GB 可存', Math.floor(128 * 1000 / comp) + ' 张'),
+        O('每秒连拍（20fps）', num(comp * 20, 0) + ' MB/s')
+      ],
+      note: '实际文件还含预览图与元数据，通常比理论值大 3~6%。拍前务必按「张数 × 单张」核对卡容量。'
+    };
+  }
+},
+{
+  id: '56', cat: 'video', name: '电池续航估算', tags: ['功耗'],
+  brief: '按电池容量与单张 / 每分钟耗电，估能拍多少张、录多久。',
+  fields: [
+    fN('mah', '电池容量', 2000, 'mAh', '', 50, 20000),
+    fN('volt', '电池电压', 7.2, 'V', '常见 7.2 / 7.4', 3, 24),
+    fN('perShot', '单张耗电', 4, 'Wh/100 张', '无反约 3~6', 0.1, 100),
+    fN('videoW', '视频功耗', 6, 'W', '4K 约 5~9W', 0.1, 60)
+  ],
+  calc: function (v) {
+    var wh = nz(v.mah, 2000) / 1000 * nz(v.volt, 7.2);
+    var perShot = nz(v.perShot, 4) / 100;
+    var shots = Math.floor(wh / perShot);
+    var min = wh / nz(v.videoW, 6) * 60;
+    return {
+      out: [
+        O('电池能量', num(wh, 2) + ' Wh'),
+        O('可拍张数', shots + ' 张', { big: 1, accent: 1 }),
+        O('可录时长', Math.floor(min / 60) + ' h ' + Math.round(min % 60) + ' min', { big: 1 }),
+        O('每 Wh 张数', num(1 / perShot, 0) + ' 张')
+      ],
+      note: '低温、防抖、屏幕亮度都会额外吃电；重要拍摄按估算值打七折备电。'
+    };
+  }
+}
+);
+
+/* ---------- 60 天文 / 航拍 ---------- */
+CALCS.push(
+{
+  id: '61', cat: 'astro', name: '星野曝光上限', tags: ['500 法则', 'NPF'],
+  brief: '星星会在传感器上走，多长曝光开始变线。三套判据一起给出，还能看各焦距的建议值。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 24, 'mm', '', 0.3, 5000), fN('pxw', '横向像素', 6000, 'px', '', 100, 200000),
+    fN('n', '光圈', 1.8, 'F', '', 0.5, 128), fN('dec', '赤纬（目标天区）', 0, '°', '天赤道 0°，极区接近 90°', -90, 90)
+  ],
+  calc: function (v) {
+    var L = lens(v), pitch = pitchUM(L.w, nz(v.pxw, 6000));
+    var eqf = L.eqf;
+    var t500 = 500 / eqf, t400 = 400 / eqf;
+    var tNpf = (35 * nz(v.n, 1.8) + 30 * pitch) / L.f;
+    var rate = 15.04 * L.f / (206.265 * pitch);
+    var px5 = 5 / rate;
+    var rows = [14, 20, 24, 35, 50, 85, 135].map(function (f) {
+      var e = f * L.crop;
+      return [f + ' mm', fmtShutter(500 / e), fmtShutter((35 * nz(v.n, 1.8) + 30 * pitch) / f)];
+    });
+    return {
+      out: [
+        O('NPF 简化（保守）', fmtShutter(tNpf), { big: 1, accent: 1 }),
+        O('500 法则', fmtShutter(t500)),
+        O('400 法则', fmtShutter(t400)),
+        O('5 像素拖线极限', fmtShutter(px5)),
+        O('星点移动速度', num(rate, 3) + ' 像素 / 秒'),
+        O('等效焦距', num(eqf, 1) + ' mm'),
+        O('赤纬修正', '×' + num(1 / Math.max(Math.cos(rad(nz(v.dec, 0))), 0.001), 2), { wide: 1 })
+      ],
+      table: { cols: ['焦距', '500 法则', 'NPF 简化'], rows: rows },
+      note: '500 法则给的是「能看出轻微拖线」的上限；想点圆星实，用 NPF 值再乘 0.7。赤纬越高星星走得越慢，可相应延长。'
+    };
+  }
+},
+{
+  id: '62', cat: 'astro', name: '深空叠加信噪比', tags: ['SNR', '叠加'],
+  brief: '单张不够亮就多拍几张叠。算清单张、多张叠加的信噪比，判断要拍多少帧。',
+  fields: [
+    fN('t', '单张曝光', 60, 's', '', 0.1, 3600), fN('frames', '叠加帧数', 50, '张', '', 1, 5000),
+    fN('signal', '目标信号率', 2, 'e-/s', '', 0.01, 1000),
+    fN('sky', '天空背景率', 1.5, 'e-/s', '光害越重越高', 0, 1000),
+    fN('dark', '暗电流率', 0.5, 'e-/s', '制冷相机接近 0', 0, 100),
+    fN('rn', '读出噪声', 3, 'e-', '', 0.1, 30)
+  ],
+  calc: function (v) {
+    var t = nz(v.t, 60), n = Math.max(1, Math.round(nz(v.frames, 50)));
+    var sig = nz(v.signal, 2), sky = nz(v.sky, 1.5), dark = nz(v.dark, 0.5), rn = nz(v.rn, 3);
+    function snr(frames) {
+      var s = sig * t * frames;
+      var noise = Math.sqrt(frames * ((sig + sky + dark) * t + rn * rn));
+      return s / noise;
+    }
+    var s1 = snr(1), sn = snr(n);
+    return {
+      out: [
+        O('叠加后 SNR', num(sn, 1), { big: 1, accent: 1 }),
+        O('单张 SNR', num(s1, 2)),
+        O('提升倍数', num(sn / s1, 2) + ' ×'),
+        O('等效单次曝光', num(n * t / 60, 1) + ' min'),
+        O('总积分时间', num(n * t / 3600, 2) + ' h')
+      ],
+      note: '叠加提升约 √n 倍；想再翻倍 SNR 要 4 倍帧数。比堆帧数更有效的是压背景（去光害、开冷）。'
+    };
+  }
+},
+{
+  id: '63', cat: 'astro', name: '流星拍摄参数', tags: ['流星雨'],
+  brief: '流星是瞬时的，靠的是尽可能多的曝光次数，而不是单张时长。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 24, 'mm', '', 0.3, 5000), fN('n', '光圈', 2.8, 'F', '', 0.5, 128),
+    fN('iso', 'ISO', 3200, 'ISO', '', 100, 409600), fN('hours', '守候时长', 4, 'h', '', 0.1, 24)
+  ],
+  calc: function (v) {
+    var L = lens(v);
+    var tPoint = 500 / L.eqf;
+    var tUse = Math.min(tPoint, 20);
+    var gap = 1;
+    var shots = Math.floor(nz(v.hours, 4) * 3600 / (tUse + gap));
+    return {
+      out: [
+        O('建议单张', fmtShutter(tUse), { big: 1, accent: 1 }),
+        O('间隙留 1 秒时的张数', shots + ' 张'),
+        O('理论星点上限', fmtShutter(tPoint)),
+        O('光圈全开', 'F' + nz(v.n, 2.8)),
+        O('建议 ISO', 'ISO' + nz(v.iso, 3200))
+      ],
+      note: '流星亮度随机，用最大光圈、尽量快的连拍节奏，把整夜时间都变成有效曝光。相机间隔拍摄要关长曝降噪。'
+    };
+  }
+},
+{
+  id: '64', cat: 'astro', name: '月面成像大小', tags: ['月亮'],
+  brief: '月亮在传感器上占多少毫米、多少像素，拍清楚环形山需要多长焦距。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 200, 'mm', '', 0.3, 50000), fN('pxw', '横向像素', 6000, 'px', '', 100, 200000),
+    fN('diam', '月面视直径', 31, '角分', '近地点约 33.5，远地点约 29.4', 20, 40)
+  ],
+  calc: function (v) {
+    var L = lens(v), pitch = pitchUM(L.w, nz(v.pxw, 6000));
+    var mm = L.f * Math.tan(rad(nz(v.diam, 31) / 60));
+    var px = mm * 1000 / pitch;
+    var fill = mm / L.w;
+    return {
+      out: [
+        O('月面直径', num(mm, 2) + ' mm', { big: 1, accent: 1 }),
+        O('占像素', Math.round(px) + ' px'),
+        O('占画面宽度', num(fill * 100, 1) + '%'),
+        O('等效焦距', num(L.eqf, 0) + ' mm'),
+        O('建议状态', fill >= 0.6 ? '已够大，注意跟踪与稳定' : '偏小，可加增距镜或换长焦')
+      ],
+      note: '月亮亮度极高，白天也能拍；曝光参考「阳光十六法则」变体：F11 + 1/125 + ISO100 起步。'
+    };
+  }
+},
+{
+  id: '65', cat: 'astro', name: '彗星追踪曝光', tags: ['彗星'],
+  brief: '彗星相对星空在动，曝光太长尾会被拉散。按漂移速度算上限。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 135, 'mm', '', 0.3, 5000), fN('pxw', '横向像素', 6000, 'px', '', 100, 200000),
+    fN('drift', '彗星日移动', 15, '角分/分', '快速彗星可达 30', 0, 120), fN('t', '计划曝光', 60, 's', '', 0.1, 3600)
+  ],
+  calc: function (v) {
+    var L = lens(v), pitch = pitchUM(L.w, nz(v.pxw, 6000));
+    var scale = 206.265 * pitch / L.f;
+    var perSec = nz(v.drift, 15) / 60 * 60;
+    var t5 = 5 * scale / perSec;
+    var drift = perSec * nz(v.t, 60) / scale;
+    return {
+      out: [
+        O('单像素张角', num(scale, 2) + ' 角秒'),
+        O('5 像素上限', fmtShutter(t5), { big: 1, accent: 1 }),
+        O('当前曝光漂移', num(drift, 1) + ' 像素', { accent: drift > 5 ? 1 : 0 }),
+        O('每秒漂移', num(perSec / scale, 3) + ' 像素')
+      ],
+      note: drift > 5 ? '<b>拖线明显</b>：可缩短曝光多拍叠加，或上赤道仪后同时跟踪彗星与星空。' : '在 5 像素内，缩图看不出来。'
+    };
+  }
+},
+{
+  id: '66', cat: 'astro', name: '极光曝光参考', tags: ['极光'],
+  brief: '按活动强度给快门区间，并检查星点会不会拖线。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 14, 'mm', '', 0.3, 5000), fN('n', '光圈', 1.8, 'F', '', 0.5, 128),
+    fN('kp', 'Kp 指数', 5, '', '0~9，越大越强', 0, 9), fN('iso', 'ISO', 1600, 'ISO', '', 100, 409600)
+  ],
+  calc: function (v) {
+    var L = lens(v), kp = nz(v.kp, 5), iso = nz(v.iso, 1600), N = nz(v.n, 1.8);
+    var tBase = [30, 15, 8, 4][Math.min(3, Math.floor(kp / 2.5))];
+    var tAdj = tBase * (1600 / iso) * Math.pow(N / 1.8, 2);
+    var tStar = 500 / L.eqf;
+    return {
+      out: [
+        O('建议曝光', fmtShutter(tAdj), { big: 1, accent: 1 }),
+        O('Kp ' + kp + ' 基准', fmtShutter(tBase)),
+        O('星点拖线上限', fmtShutter(tStar)),
+        O('判断', tAdj > tStar ? '会拖线，需缩短或提高 ISO' : '星点可保持圆'),
+        O('等效焦距', num(L.eqf, 0) + ' mm')
+      ],
+      note: '极光亮度变化很快，短曝多拍再挑比长曝一张稳；绿色为主时白平衡 3800~4200K，偏紫则往 3200K 走。'
+    };
+  }
+},
+{
+  id: '67', cat: 'astro', name: '日月食曝光阶梯', tags: ['日食', '月食'],
+  brief: '日食要减光、月食不用；不同阶段的曝光差很大，先列好阶梯再上脚架。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 400, 'mm', '', 0.3, 5000), fN('n', '光圈', 8, 'F', '', 0.5, 128),
+    fS('type', '类型', [['s', '日食（偏食 / 环食）'], ['t', '日全食（全食阶段）'], ['l', '月食']], 's')
+  ],
+  calc: function (v) {
+    var L = lens(v), N = nz(v.n, 8);
+    var rows, note;
+    if (v.type === 'l') {
+      rows = [
+        ['满月', '1/500', 'ISO100'],
+        ['初亏 / 复圆', '1/250', 'ISO200'],
+        ['食分 50%', '1/60', 'ISO400'],
+        ['全食（偏暗）', '2s', 'ISO1600'],
+        ['全食（血月）', '8s', 'ISO3200']
+      ];
+      note = '月食不需要任何减光镜；全食阶段亮度骤降，快门要跨 10 档以上，建议用包围。';
+    } else if (v.type === 't') {
+      rows = [
+        ['钻石环', '1/1000', 'ISO100'],
+        ['日冕（内）', '1/250', 'ISO100'],
+        ['日冕（外）', '1/60', 'ISO100'],
+        ['日珥', '1/500', 'ISO100'],
+        ['地球照', '1/8', 'ISO400']
+      ];
+      note = '只有全食阶段可以摘下滤镜，且必须精确掐表；生光前后必须立即装回巴德膜。';
+    } else {
+      rows = [
+        ['偏食（巴德膜）', '1/1000', 'ISO100'],
+        ['偏食（ND5）', '1/500', 'ISO100'],
+        ['初亏', '1/2000', 'ISO100'],
+        ['食甚（未全食）', '1/1500', 'ISO100']
+      ];
+      note = '偏食与环食严禁裸眼或裸镜头直对太阳，必须用巴德膜 / ND5 级减光，否则会烧毁传感器与眼睛。';
+    }
+    return {
+      out: [
+        O('当前设置', 'F' + N + ' · ' + L.f + ' mm'),
+        O('等效焦距', num(L.eqf, 0) + ' mm'),
+        O('安全提示', v.type === 'l' ? '无需减光' : '必须减光', { accent: 1 })
+      ],
+      table: { cols: ['阶段', '快门', 'ISO'], rows: rows },
+      note: note
+    };
+  }
+},
+{
+  id: '68', cat: 'astro', name: '天体在画面上的大小', tags: ['角秒'],
+  brief: '已知天体角直径，换算成传感器上的毫米与像素，判断要不要加增距镜。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 300, 'mm', '', 0.3, 50000), fN('pxw', '横向像素', 6000, 'px', '', 100, 200000),
+    fN('arcsec', '天体角直径', 40, '角秒', '木星约 40"，月面约 1860"', 0.01, 5000)
+  ],
+  calc: function (v) {
+    var L = lens(v), pitch = pitchUM(L.w, nz(v.pxw, 6000));
+    var scale = 206.265 * pitch / L.f;
+    var px = nz(v.arcsec, 40) / scale;
+    return {
+      out: [
+        O('像面直径', num(nz(v.arcsec, 40) / 206265 * L.f, 4) + ' mm', { big: 1 }),
+        O('占像素', num(px, 1) + ' px', { big: 1, accent: 1 }),
+        O('单像素张角', num(scale, 2) + ' 角秒'),
+        O('建议', px < 50 ? '偏小，建议加增距或换长焦' : '尺寸合适'),
+        O('整幅视场', num(L.w / L.f * 3437.75, 1) + ' × ' + num(L.h / L.f * 3437.75, 1) + ' 角分')
+      ],
+      note: '行星摄影一般希望目标占 100~300 像素；低于 50 像素基本只能拍成一个点。'
+    };
+  }
+},
+{
+  id: '69', cat: 'astro', name: '赤道仪追踪精度', tags: ['跟踪'],
+  brief: '极轴没对准，长曝就会拖线。按误差和曝光时长算拖了多少像素。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 300, 'mm', '', 0.3, 5000), fN('pxw', '横向像素', 6000, 'px', '', 100, 200000),
+    fN('err', '极轴误差', 5, '角分', '', 0, 120), fN('t', '单张曝光', 300, 's', '', 0.1, 3600)
+  ],
+  calc: function (v) {
+    var L = lens(v), pitch = pitchUM(L.w, nz(v.pxw, 6000));
+    var scale = 206.265 * pitch / L.f;
+    var errArc = nz(v.err, 5) * 60;
+    var px = errArc * nz(v.t, 300) / 3600 / scale;
+    var limit = scale * 3600 / (errArc || 1);
+    return {
+      out: [
+        O('拖线像素', num(px, 2) + ' px', { big: 1, accent: px > 2 ? 1 : 0 }),
+        O('5 像素允许时长', num(limit * 5 / 60, 1) + ' 分'),
+        O('单像素张角', num(scale, 2) + ' 角秒'),
+        O('误差', errArc + ' 角秒')
+      ],
+      note: px > 2 ? '<b>会拖线</b>：缩短单张、多拍叠加，或重新对极轴（用极轴镜 / 漂移法）。' : '在 2 像素内，长曝可用。'
+    };
+  }
+},
+{
+  id: '70', cat: 'astro', name: '航测 GSD 与覆盖面积', tags: ['无人机', '测绘'],
+  brief: '飞多高能拿到多少厘米的地面分辨率，一块地要飞几条航线、几张片子。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 24, 'mm', '', 0.3, 5000), fN('pxw', '横向像素', 6000, 'px', '', 100, 200000),
+    fN('pxh', '纵向像素', 4000, 'px', '', 100, 200000), fN('alt', '相对地面高度', 120, 'm', '', 1, 5000),
+    fN('areaW', '测区宽度', 1000, 'm', '', 1, 100000), fN('areaH', '测区长度', 1000, 'm', '', 1, 100000),
+    fN('fwd', '航向重叠', 0.8, '', '0.7~0.85', 0.1, 0.95), fN('side', '旁向重叠', 0.7, '', '0.6~0.8', 0.1, 0.95)
+  ],
+  calc: function (v) {
+    var L = lens(v), pitch = pitchUM(L.w, nz(v.pxw, 6000)), alt = nz(v.alt, 120);
+    var gsd = alt * pitch / (L.f * 1000);
+    var wCover = nz(v.pxw, 6000) * gsd, hCover = nz(v.pxh, 4000) * gsd;
+    var lines = Math.ceil(nz(v.areaW, 1000) / (wCover * (1 - nz(v.side, 0.7))));
+    var perLine = Math.ceil(nz(v.areaH, 1000) / (hCover * (1 - nz(v.fwd, 0.8))));
+    var total = lines * perLine;
+    return {
+      out: [
+        O('地面分辨率 GSD', num(gsd * 100, 1) + ' cm/px', { big: 1, accent: 1 }),
+        O('单张覆盖', num(wCover, 0) + ' × ' + num(hCover, 0) + ' m'),
+        O('航线数 / 每线张数', lines + ' 条 / ' + perLine + ' 张'),
+        O('总张数', total + ' 张', { big: 1 }),
+        O('飞行总里程', num(lines * nz(v.areaH, 1000) / 1000, 2) + ' km'),
+        O('成图比例尺', '1 : ' + num(alt * 1000 / L.f, 0))
+      ],
+      note: 'GSD = 高度 × 像元间距 ÷ 焦距。重叠率越高重建越稳，但张数与处理时间成倍增加，航测常用 80% / 70%。'
+    };
+  }
+}
+);
+
+/* ---------- 70 打印 / 色彩 / 画质 ---------- */
+CALCS.push(
+{
+  id: '71', cat: 'print', name: '打印尺寸与 dpi', tags: ['输出'],
+  brief: '像素、dpi、成品尺寸三者互换。印前先确认够不够 300dpi。',
+  fields: [
+    fS('mode', '求什么', [['a', '像素 + dpi → 成品尺寸'], ['b', '成品尺寸 + dpi → 所需像素'], ['c', '像素 + 成品尺寸 → 实际 dpi']], 'a'),
+    fN('pxw', '横向像素', 6000, 'px', '', 100, 200000),
+    fN('pxh', '纵向像素', 4000, 'px', '', 100, 200000),
+    fN('dpi', '输出 dpi', 300, 'dpi', '画册 300，海报 150~200', 30, 1200),
+    fN('wcm', '成品宽', 30, 'cm', '模式 b / c 使用', 0.1, 500),
+    fN('hcm', '成品高', 20, 'cm', '模式 b / c 使用', 0.1, 500)
+  ],
+  calc: function (v) {
+    var pxw = nz(v.pxw, 6000), pxh = nz(v.pxh, 4000), dpi = nz(v.dpi, 300);
+    if (v.mode === 'b') {
+      return {
+        out: [
+          O('所需像素', Math.round(nz(v.wcm, 30) / 2.54 * dpi) + ' × ' + Math.round(nz(v.hcm, 20) / 2.54 * dpi), { big: 1, accent: 1 }),
+          O('总像素', num(nz(v.wcm, 30) / 2.54 * dpi * nz(v.hcm, 20) / 2.54 * dpi / 1e6, 1) + ' MP'),
+          O('成品尺寸', num(nz(v.wcm, 30), 1) + ' × ' + num(nz(v.hcm, 20), 1) + ' cm')
+        ],
+        note: '按 300dpi 准备最稳；大幅面海报按 150dpi 也够，观看距离越远要求越低。'
+      };
+    }
+    if (v.mode === 'c') {
+      var realDpi = pxw / (nz(v.wcm, 30) / 2.54);
+      return {
+        out: [
+          O('实际 dpi', num(realDpi, 1) + ' dpi', { big: 1, accent: realDpi < 300 ? 1 : 0 }),
+          O('判断', realDpi >= 300 ? '精细印刷足够' : realDpi >= 200 ? '常规印刷可接受' : realDpi >= 150 ? '海报 / 远观可用' : '偏低，需放大处理'),
+          O('成品尺寸', num(nz(v.wcm, 30), 1) + ' × ' + num(nz(v.hcm, 20), 1) + ' cm')
+        ],
+        note: 'dpi 低于 150 时，靠插值放大只是把像素摊开，不会长出新细节。'
+      };
+    }
+    return {
+      out: [
+        O('成品尺寸', num(pxw / dpi * 2.54, 1) + ' × ' + num(pxh / dpi * 2.54, 1) + ' cm', { big: 1, accent: 1 }),
+        O('英寸', num(pxw / dpi, 1) + ' × ' + num(pxh / dpi, 1) + ' in'),
+        O('150 dpi 下', num(pxw / 150 * 2.54, 1) + ' × ' + num(pxh / 150 * 2.54, 1) + ' cm'),
+        O('总像素', num(pxw * pxh / 1e6, 1) + ' MP')
+      ],
+      note: '同一张图，dpi 定得越低印得越大，但细节密度也越低。'
+    };
+  }
+},
+{
+  id: '72', cat: 'print', name: '观看距离与可接受弥散圆', tags: ['CoC'],
+  brief: '弥散圆该取多少，取决于「谁在多远看多大一张」。按观看条件反推，而不是死记 0.03mm。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 50, 'mm', '', 0.3, 5000),
+    fN('view', '观看距离', 50, 'cm', '', 5, 500),
+    fN('print', '成品长边', 60, 'cm', '', 5, 1000),
+    fN('arcmin', '人眼分辨力', 1.5, '角分', '1~2 之间', 0.5, 5)
+  ],
+  calc: function (v) {
+    var L = lens(v), view = nz(v.view, 50), pr = nz(v.print, 60), am = nz(v.arcmin, 1.5);
+    var cPrint = 2 * view * 10 * Math.tan(rad(am / 60 / 2));
+    var cSensor = cPrint * Math.max(L.w, L.h) / (pr * 10);
+    var classic = cocOf(L.w, L.h);
+    return {
+      out: [
+        O('可接受弥散圆', num(cSensor * 1000, 1) + ' um', { big: 1, accent: 1 }),
+        O('印刷面上弥散圆', num(cPrint, 3) + ' mm'),
+        O('1500 法则值', num(classic * 1000, 1) + ' um'),
+        O('换算所需像素', num(L.w / cSensor, 0) + ' px 长边'),
+        O('判断', Math.abs(cSensor - classic) / classic > 0.5 ? '与常规值差异较大' : '与常规值接近')
+      ],
+      note: '同一张图印得越大、看得越近，弥散圆就要越小；反过来，大幅面远观其实要求很松。'
+    };
+  }
+},
+{
+  id: '73', cat: 'print', name: '全景接片规划', tags: ['接片'],
+  brief: '要拍到多少度、用几排、重叠留多少，一共多少张。接片前先算清楚。',
+  fields: [
+    fSen(), fN('f', '物理焦距', 35, 'mm', '', 0.3, 5000),
+    fN('angle', '目标水平视角', 180, '°', '', 10, 720),
+    fN('overlap', '重叠率', 0.3, '', '建议 0.25~0.4', 0.05, 0.9),
+    fN('rows', '排数', 1, '', '竖构图多排可提高像素', 1, 5)
+  ],
+  calc: function (v) {
+    var L = lens(v), a = fovAngles(L.w, L.h, L.f);
+    var step = a.fh * (1 - nz(v.overlap, 0.3));
+    var perRow = Math.max(1, Math.ceil(nz(v.angle, 180) / step));
+    var rows = Math.round(nz(v.rows, 1));
+    var total = perRow * rows;
+    return {
+      out: [
+        O('单张水平视场', num(a.fh, 2) + '°'),
+        O('每张有效转角', num(step, 2) + '°'),
+        O('每排张数', perRow + ' 张', { big: 1, accent: 1 }),
+        O('总张数', total + ' 张', { big: 1 }),
+        O('成片角度', num(a.fh + step * (perRow - 1), 1) + '° × ' + num(a.fv + (rows - 1) * a.fv * (1 - nz(v.overlap, 0.3)), 1) + '°')
+      ],
+      note: '接片必须手动曝光与固定白平衡，否则拼缝会露；云动时间要用最短总拍摄时长，宁快勿慢。'
+    };
+  }
+},
+{
+  id: '74', cat: 'print', name: '色温与 mired 校正', tags: ['白平衡', '滤镜'],
+  brief: '开尔文与 mired 互换，算加雷登滤镜 / 调白平衡该偏多少。',
+  fields: [
+    fS('mode', '求什么', [['a', '色温 → mired 与偏移量'], ['b', 'mired 偏移 → 新色温'], ['c', '两处光源 → 差值']], 'a'),
+    fN('k', '当前色温', 5600, 'K', '', 1000, 12000),
+    fN('shift', 'mired 偏移', -40, 'mired', '负值 = 更冷（加蓝）', -300, 300),
+    fN('ka', '光源 A', 3200, 'K', '', 1000, 12000),
+    fN('kb', '光源 B', 5600, 'K', '', 1000, 12000)
+  ],
+  calc: function (v) {
+    if (v.mode === 'b') {
+      var m0 = mired(nz(v.k, 5600)) + nz(v.shift, -40);
+      return {
+        out: [
+          O('新色温', num(colorTemp(m0), 0) + ' K', { big: 1, accent: 1 }),
+          O('新 mired', num(m0, 1)),
+          O('原 mired', num(mired(nz(v.k, 5600)), 1)),
+          O('偏移', (nz(v.shift, -40) > 0 ? '+' : '') + nz(v.shift, -40) + ' mired')
+        ],
+        note: 'mired = 1,000,000 / K。mired 是等间隔的暖冷刻度，摄影滤镜与白平衡都按它标定。'
+      };
+    }
+    if (v.mode === 'c') {
+      var d = mired(nz(v.kb, 5600)) - mired(nz(v.ka, 3200));
+      return {
+        out: [
+          O('mired 差', (d > 0 ? '+' : '') + num(d, 1)),
+          O('色温差', num(nz(v.kb, 5600) - nz(v.ka, 3200), 0) + ' K'),
+          O('需补', d < 0 ? '加暖（琥珀 / 降色温）' : '加冷（蓝 / 升色温）'),
+          O('近似档数', num(Math.abs(d) / 40, 2) + ' 档（1 档约 40 mired）')
+        ],
+        note: '同场景多光源混色时，先决定以谁为准，再用 mired 差去补另一侧。'
+      };
+    }
+    var k = nz(v.k, 5600);
+    var rows = [[2000, '烛光'], [3200, '钨丝灯'], [4000, '荧光 / 日出'], [5600, '日光'], [6500, '阴天'], [7500, '蓝调时刻'], [9000, '阴影 / 蓝天']].map(function (r) {
+      return [r[0] + ' K', num(mired(r[0]), 0), r[1]];
+    });
+    return {
+      out: [
+        O('mired', num(mired(k), 1), { big: 1, accent: 1 }),
+        O('类别', k < 3000 ? '夜间 / 烛光' : k < 4000 ? '暖光（钨丝）' : k < 5200 ? '中性偏暖' : k < 6200 ? '日光' : k < 7500 ? '阴天偏冷' : '强冷 / 蓝调'),
+        O('相对日光', num(mired(k) - mired(5600), 0) + ' mired')
+      ],
+      table: { cols: ['色温', 'mired', '典型场景'], rows: rows },
+      note: '以 5600K 为基准：mired 越小越冷（偏蓝），越大越暖（偏黄）。'
+    };
+  }
+},
+{
+  id: '75', cat: 'print', name: '动态范围估算', tags: ['DR', '宽容度'],
+  brief: '满阱容量与读出噪声决定理论动态范围，再按 ISO 打折。',
+  fields: [
+    fN('fwc', '满阱容量', 60000, 'e-', '全画幅约 5~8 万', 100, 1000000),
+    fN('rn', '读出噪声', 3, 'e-', '现代传感器 2~5', 0.1, 60),
+    fN('iso', '拍摄 ISO', 100, 'ISO', '', 6, 409600),
+    fN('base', '基准 ISO', 100, 'ISO', '', 6, 4096)
+  ],
+  calc: function (v) {
+    var dr = Math.log2(nz(v.fwc, 60000) / nz(v.rn, 3));
+    var drop = Math.log2(nz(v.iso, 100) / nz(v.base, 100));
+    var real = dr - drop;
+    return {
+      out: [
+        O('理论动态范围', num(dr, 1) + ' 档', { big: 1 }),
+        O('当前 ISO 下', num(real, 1) + ' 档', { big: 1, accent: 1 }),
+        O('可用高光余量', num(real * 0.4, 1) + ' 档（约 40%）'),
+        O('ISO 提升损失', num(drop, 1) + ' 档'),
+        O('判断', real >= 12 ? '优秀' : real >= 10 ? '良好' : real >= 8 ? '一般' : '局促')
+      ],
+      note: 'ISO 每翻倍约损失 1 档动态范围。为保高光，风光常欠曝 1/3~1 档再拉回。'
+    };
+  }
+}
+);
+
+/* 传感器「自定义尺寸」字段：自动补到每个含传感器的计算项 */
+CALCS.forEach(function (c) {
+  if (c.fields.some(function (f) { return f.kind === 'sensor'; })) {
+    c.fields.push({
+      k: 'cw', label: '自定义宽度', kind: 'num', def: 36, unit: 'mm',
+      hint: '选「自定义尺寸」时生效', min: 0.5, max: 1000,
+      when: function (v) { return v.sensor === CUSTOM; }
+    });
+    c.fields.push({
+      k: 'ch', label: '自定义高度', kind: 'num', def: 24, unit: 'mm',
+      hint: '选「自定义尺寸」时生效', min: 0.5, max: 1000,
+      when: function (v) { return v.sensor === CUSTOM; }
+    });
+  }
+});
+
+boot();
+</script>
+</body>
+</html>
